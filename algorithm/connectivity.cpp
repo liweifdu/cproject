@@ -10,8 +10,11 @@ int main(){
         id[i] = i;
     while (cin >> p  >> q){
         int t = id[p];
-        if (t == id[q])
+        if (t == id[q]){
+            cout << "the two numbers are connected" << endl;
+            cout << id[p] << id[q] << endl;
             continue;
+        }
         for (i = 0; i < N; ++i){
             if (id[i] == t)
                 id[i] = id[q];
