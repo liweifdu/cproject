@@ -4,6 +4,7 @@
 using namespace std;
 
 static const int N = 1000;
+
 int fastsearch(){
     int i, p, q, id[N];
     for (i = 0; i < N; ++i)
@@ -42,7 +43,32 @@ int fastmerge(){
     return 0;
 }
 
+int fastmergeweight(){
+    int i, j, p, q, id[N], sz[N];
+    for (i = 0; i < N; i++){
+        id[i] = i;
+        sz[i] = i;
+    }
+    while (cin >> p >> q){
+        for (i = p; i != id[i]; i = id[i]);
+        for (j = q; j != id[j]; j = id[j]);
+        if (i == j)
+            continue;
+        if (sz[i] < sz[j]){
+            id[i] = j;
+            sz[j] += sz[i];
+        }
+        else {
+            id[j] = i;
+            sz[i] += sz[j];
+        }
+        cout << " " << p << " " << q << endl;
+    }
+    return 0;
+}
+
 int main(){
     //fastsearch();
-    fastmerge();
+    //fastmerge();
+    fastmergeweight();
 }
