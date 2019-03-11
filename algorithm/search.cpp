@@ -15,7 +15,7 @@ int seqsearch(int *a, int v, int l){
 int dichotomy(int *a, int v, int l){
     int afirst = 0, alast = l;
     while(afirst != alast){
-    int half = afirst + (alast - afirst)/2;
+    const int half = afirst + (alast - afirst)/2;
         if (a[half] == v){
             //return half;
             cout << "the index of input is " << half << endl;
