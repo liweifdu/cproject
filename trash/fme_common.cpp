@@ -36,15 +36,28 @@ void FME::fme64x64()
     //partition decision
     fmepartition();
 
-	//do fme
+    //do fme
     fmectu();
+}
+
+uint32_t FME::calcRDSADCost(int pos_x, int pos_y, int len_x, int len_y, int16_t mv[2], int min_index)
+{
+    uint32_t satd       = 0;
+    uint32_t distortion = COST_MAX;
+    for (int blk8x8_y = 0; blk8x8_y < len_y; blk8x8_y += 8)
+        for (int blk8x8_x = 0; blk8x8_x < len_x; blk8x8_x += 8) {
+            satd += sub_hadmard_satd_8x8(&cur_mb.luma[pos_y + blk8x8_y][pos_x + blk8x8_x], &ref_mb[min_index][blk8x8_y][blk8x8_x]);
+        }
+    distortion = satd + (lambda_tab[fme_input.qp] * (getBits(abs(mv[0])) + getBits(abs(mv[1]))));
+    return distortion;
 }
 
 void FME::fme64x64cost()
 {
-    for (int splitmode = 0; splitmode < 4; splitmode++){
+    int min_index;
+    for (int splitmode = 0; splitmode < 4; splitmode++) {
         switch (splitmode) {
-        case SIZE_2Nx2N:
+        case SIZE_2Nx2N: {
             cu_skip[0] = 0;
             mv[0]      = fme_input.mv_8x8[0][0][0][0][0];
             mv[1]      = fme_input.mv_8x8[0][0][0][0][1];
@@ -54,16 +67,19 @@ void FME::fme64x64cost()
             ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
             // half me
             interpolate_h(ref_pos[0], ref_pos[1], 64, 64);
-            cost64x64_2Nx2N = subpel_me(cur_pos[0], cur_pos[1], 64, 64, mv, dmv, 1);
+            subpel_me(cur_pos[0], cur_pos[1], 64, 64, mv, dmv, 1);
             mv[0] += dmv[0]; // new mv
             mv[1] += dmv[1];
             // quart me
             interpolate_q(ref_pos[0], ref_pos[1], 64, 64, dmv);
-            cost64x64_2Nx2N = subpel_me(cur_pos[0], cur_pos[1], 64, 64, mv, dmv, 0);
+            subpel_me(cur_pos[0], cur_pos[1], 64, 64, mv, dmv, 0);
             mv[0] += dmv[0]; // new mv
             mv[1] += dmv[1];
-            break;
-        case SIZE_2NxN:
+            min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
+            uint32_t cost64x64 = calcRDSADCost(cur_pos[0], cur_pos[1], 64, 64, mv, min_index);
+            cost64x64_2Nx2N    = cost64x64;
+        } break;
+        case SIZE_2NxN: {
             cu_skip[0] = 0;
             for (int blk = 0; blk < 2; blk++) {
                 mv[0]      = fme_input.mv_8x8[blk * 2][0][0][0][0];
@@ -79,13 +95,15 @@ void FME::fme64x64cost()
                 mv[1] += dmv[1];
                 // quart me
                 interpolate_q(ref_pos[0], ref_pos[1], 64, 32, dmv);
-                uint32_t cost64x32 = subpel_me(cur_pos[0], cur_pos[1], 64, 32, mv, dmv, 0);
-                cost64x64_2NxN += cost64x32;
+                subpel_me(cur_pos[0], cur_pos[1], 64, 32, mv, dmv, 0);
                 mv[0] += dmv[0];
                 mv[1] += dmv[1];
+                min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
+                uint32_t cost64x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 64, 32, mv, min_index);
+                cost64x64_2NxN += cost64x32;
             }
-            break;
-        case SIZE_Nx2N:
+        } break;
+        case SIZE_Nx2N: {
             cu_skip[0] = 0;
             for (int blk = 0; blk < 2; blk++) {
                 mv[0]      = fme_input.mv_8x8[blk][0][0][0][0];
@@ -101,12 +119,14 @@ void FME::fme64x64cost()
                 mv[1] += dmv[1];
                 // quart me
                 interpolate_q(ref_pos[0], ref_pos[1], 32, 64, dmv);
-                uint32_t cost32x64 = subpel_me(cur_pos[0], cur_pos[1], 32, 64, mv, dmv, 0);
-                cost64x64_Nx2N += cost32x64;
+                subpel_me(cur_pos[0], cur_pos[1], 32, 64, mv, dmv, 0);
                 mv[0] += dmv[0];
                 mv[1] += dmv[1];
+                min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
+                uint32_t cost32x64 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 64, mv, min_index);
+                cost64x64_Nx2N += cost32x64;
             }
-            break;
+        } break;
         case 3:
             for (int blk = 0; blk < 4; blk++) {
                 for (int splitmode = 0; splitmode < 4; splitmode++)
@@ -114,33 +134,36 @@ void FME::fme64x64cost()
             }
             break;
         }
-
     }
 }
 
 void FME::fme32x32cost(int blk32x32, int splitmode)
 {
+    int min_index;
     switch (splitmode) {
-    case SIZE_2Nx2N:
+    case SIZE_2Nx2N: {
         cu_skip[1 + blk32x32] = 0;
         mv[0]                 = fme_input.mv_8x8[blk32x32][0][0][0][0];
         mv[1]                 = fme_input.mv_8x8[blk32x32][0][0][0][1];
-        cur_pos[0] = 32 * (blk32x32 % 2); // current pu position
-        cur_pos[1] = 32 * (blk32x32 / 2);
-        ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-        ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+        cur_pos[0]            = 32 * (blk32x32 % 2); // current pu position
+        cur_pos[1]            = 32 * (blk32x32 / 2);
+        ref_pos[0]            = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+        ref_pos[1]            = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
         // half me
         interpolate_h(ref_pos[0], ref_pos[1], 32, 32);
-        cost32x32_2Nx2N[blk32x32] = subpel_me(cur_pos[0], cur_pos[1], 32, 32, mv, dmv, 1);
+        subpel_me(cur_pos[0], cur_pos[1], 32, 32, mv, dmv, 1);
         mv[0] += dmv[0]; // new mv
         mv[1] += dmv[1];
         // quart me
         interpolate_q(ref_pos[0], ref_pos[1], 32, 32, dmv);
-        cost32x32_2Nx2N[blk32x32] = subpel_me(cur_pos[0], cur_pos[1], 32, 32, mv, dmv, 0);
+        subpel_me(cur_pos[0], cur_pos[1], 32, 32, mv, dmv, 0);
         mv[0] += dmv[0]; // new mv
         mv[1] += dmv[1];
-        break;
-    case SIZE_2NxN:
+        min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
+        uint32_t cost32x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 32, mv, min_index);
+        cost32x32_2Nx2N[blk32x32] += cost32x32;
+    } break;
+    case SIZE_2NxN: {
         cu_skip[1 + blk32x32] = 0;
         for (int blk = 0; blk < 2; blk++) {
             mv[0]      = fme_input.mv_8x8[blk32x32][blk * 2][0][0][0];
@@ -156,13 +179,15 @@ void FME::fme32x32cost(int blk32x32, int splitmode)
             mv[1] += dmv[1];
             // quart me
             interpolate_q(ref_pos[0], ref_pos[1], 32, 16, dmv);
-            uint32_t cost32x16 = subpel_me(cur_pos[0], cur_pos[1], 32, 16, mv, dmv, 0);
-            cost32x32_2NxN[blk32x32] += cost32x16;
+            subpel_me(cur_pos[0], cur_pos[1], 32, 16, mv, dmv, 0);
             mv[0] += dmv[0];
             mv[1] += dmv[1];
+            min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
+            uint32_t cost32x16 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 16, mv, min_index);
+            cost32x32_2NxN[blk32x32] += cost32x16;
         }
-        break;
-    case SIZE_Nx2N:
+    } break;
+    case SIZE_Nx2N: {
         cu_skip[1 + blk32x32] = 0;
         for (int blk = 0; blk < 2; blk++) {
             mv[0]      = fme_input.mv_8x8[blk32x32][blk][0][0][0];
@@ -178,12 +203,14 @@ void FME::fme32x32cost(int blk32x32, int splitmode)
             mv[1] += dmv[1];
             // quart me
             interpolate_q(ref_pos[0], ref_pos[1], 16, 32, dmv);
-            uint32_t cost16x32 = subpel_me(cur_pos[0], cur_pos[1], 16, 32, mv, dmv, 0);
-            cost32x32_Nx2N[blk32x32] += cost16x32;
+            subpel_me(cur_pos[0], cur_pos[1], 16, 32, mv, dmv, 0);
             mv[0] += dmv[0];
             mv[1] += dmv[1];
+            min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
+            uint32_t cost16x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 32, mv, min_index);
+            cost32x32_Nx2N[blk32x32] += cost16x32;
         }
-        break;
+    } break;
     case 3:
         for (int blk = 0; blk < 4; blk++) {
             for (int splitmode = 0; splitmode < 4; splitmode++)
@@ -193,30 +220,33 @@ void FME::fme32x32cost(int blk32x32, int splitmode)
     }
 }
 
-
 void FME::fme16x16cost(int blk32x32, int blk16x16, int splitmode)
 {
+    int min_index = 0;
     switch (splitmode) {
-    case SIZE_2Nx2N:
+    case SIZE_2Nx2N: {
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
         mv[0]                                = fme_input.mv_8x8[blk32x32][blk16x16][0][0][0];
         mv[1]                                = fme_input.mv_8x8[blk32x32][blk16x16][0][0][1];
-        cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
-        cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-        ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-        ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+        cur_pos[0]                           = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
+        cur_pos[1]                           = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+        ref_pos[0]                           = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+        ref_pos[1]                           = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
         // half me
         interpolate_h(ref_pos[0], ref_pos[1], 16, 16);
-        cost16x16_2Nx2N[blk32x32][blk16x16] = subpel_me(cur_pos[0], cur_pos[1], 16, 16, mv, dmv, 1);
+        subpel_me(cur_pos[0], cur_pos[1], 16, 16, mv, dmv, 1);
         mv[0] += dmv[0]; // new mv
         mv[1] += dmv[1];
         // quart me
         interpolate_q(ref_pos[0], ref_pos[1], 16, 16, dmv);
-        cost16x16_2Nx2N[blk32x32][blk16x16] = subpel_me(cur_pos[0], cur_pos[1], 16, 16, mv, dmv, 0);
+        subpel_me(cur_pos[0], cur_pos[1], 16, 16, mv, dmv, 0);
         mv[0] += dmv[0]; // new mv
         mv[1] += dmv[1];
-        break;
-    case SIZE_2NxN:
+        min_index                           = (dmv[1] + 1) * 3 + dmv[0] + 1;
+        uint32_t cost16x16                  = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 16, mv, min_index);
+        cost16x16_2Nx2N[blk32x32][blk16x16] = cost16x16;
+	}break;
+    case SIZE_2NxN: {
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
         for (int blk = 0; blk < 2; blk++) {
             mv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk * 2][0][0];
@@ -232,13 +262,15 @@ void FME::fme16x16cost(int blk32x32, int blk16x16, int splitmode)
             mv[1] += dmv[1];
             // quart me
             interpolate_q(ref_pos[0], ref_pos[1], 16, 8, dmv);
-            uint32_t cost16x8 = subpel_me(cur_pos[0], cur_pos[1], 16, 8, mv, dmv, 0);
-            cost16x16_2NxN[blk32x32][blk16x16] += cost16x8;
+            subpel_me(cur_pos[0], cur_pos[1], 16, 8, mv, dmv, 0);
             mv[0] += dmv[0];
             mv[1] += dmv[1];
+            min_index         = (dmv[1] + 1) * 3 + dmv[0] + 1;
+            uint32_t cost16x8 = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 8, mv, min_index);
+            cost16x16_2NxN[blk32x32][blk16x16] += cost16x8;
         }
-        break;
-    case SIZE_Nx2N:
+	}break;
+    case SIZE_Nx2N: {
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
         for (int blk = 0; blk < 2; blk++) {
             mv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk][0][0];
@@ -255,12 +287,14 @@ void FME::fme16x16cost(int blk32x32, int blk16x16, int splitmode)
             // quart me
             interpolate_q(ref_pos[0], ref_pos[1], 8, 16, dmv);
             //cost16x16 += subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
-            uint32_t cost8x16 = subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
-            cost16x16_Nx2N[blk32x32][blk16x16] += cost8x16;
+            subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
             mv[0] += dmv[0];
             mv[1] += dmv[1];
+            min_index         = (dmv[1] + 1) * 3 + dmv[0] + 1;
+            uint32_t cost8x16 = calcRDSADCost(cur_pos[0], cur_pos[1], 8, 16, mv, min_index);
+            cost16x16_Nx2N[blk32x32][blk16x16] += cost8x16;
         }
-        break;
+	}break;
     case SPLIT:
         for (int blk = 0; blk < 4; blk++) {
             fme8x8cost(blk32x32, blk16x16, blk);
@@ -271,23 +305,27 @@ void FME::fme16x16cost(int blk32x32, int blk16x16, int splitmode)
 
 void FME::fme8x8cost(int blk32x32, int blk16x16, int blk8x8)
 {
+    int min_index;
     cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] = 0;
     mv[0]                                               = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][0][0];
     mv[1]                                               = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][0][1];
-    cur_pos[0] = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
-    cur_pos[1] = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-    ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-    ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+    cur_pos[0]                                          = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
+    cur_pos[1]                                          = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+    ref_pos[0]                                          = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+    ref_pos[1]                                          = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
     // half me
     interpolate_h(ref_pos[0], ref_pos[1], 8, 8);
-    cost8x8[blk32x32][blk16x16][blk8x8] = subpel_me(cur_pos[0], cur_pos[1], 8, 8, mv, dmv, 1);
+    subpel_me(cur_pos[0], cur_pos[1], 8, 8, mv, dmv, 1);
     mv[0] += dmv[0]; // new mv
     mv[1] += dmv[1];
     // quart me
     interpolate_q(ref_pos[0], ref_pos[1], 8, 8, dmv);
-    cost8x8[blk32x32][blk16x16][blk8x8] = subpel_me(cur_pos[0], cur_pos[1], 8, 8, mv, dmv, 0);
+    subpel_me(cur_pos[0], cur_pos[1], 8, 8, mv, dmv, 0);
     mv[0] += dmv[0]; // new mv
     mv[1] += dmv[1];
+    min_index                                 = (dmv[1] + 1) * 3 + dmv[0] + 1;
+    uint32_t cost8x8                          = calcRDSADCost(cur_pos[0], cur_pos[1], 8, 8, mv, min_index);
+    cost8x8_2Nx2N[blk32x32][blk16x16][blk8x8] = cost8x8;
 }
 
 void FME::fmepartition()
@@ -295,9 +333,9 @@ void FME::fmepartition()
     int part_x;
     int part_y;
     //===========cu8x8===============
-    for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) 
-        for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) 
-            for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) 
+    for (int blk32x32 = 0; blk32x32 < 4; blk32x32++)
+        for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
+            for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
                 fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_2Nx2N;
 
     //===========cu16x16===============
@@ -305,34 +343,34 @@ void FME::fmepartition()
         for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
             fme_input.cu_16x16_mode[blk32x32][blk16x16] = SPLIT;
             for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-                cost16x16_min[blk32x32][blk16x16] += cost8x8[blk32x32][blk16x16][blk8x8]; //assume 16x16 best is added up by 8x8 best
+                cost16x16_min[blk32x32][blk16x16] += cost8x8_2Nx2N[blk32x32][blk16x16][blk8x8]; //assume 16x16 best is added up by 8x8 best
             part_x = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             part_y = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-            if ( !((is_x_Boundry&&((part_x+15)>x_Boundry)) || (is_y_Boundry&&((part_y+15)>y_Boundry))) ) {
+            if (!((is_x_Boundry && ((part_x + 15) > x_Boundry)) || (is_y_Boundry && ((part_y + 15) > y_Boundry)))) {
                 //test SIZE_Nx2N
                 if (cost16x16_Nx2N[blk32x32][blk16x16] <= cost16x16_min[blk32x32][blk16x16]) {
-                    cost16x16_min[blk32x32][blk16x16]         = cost16x16_Nx2N[blk32x32][blk16x16];
+                    cost16x16_min[blk32x32][blk16x16]           = cost16x16_Nx2N[blk32x32][blk16x16];
                     fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_Nx2N;
                     //clear
-                    for (int blk = 0; blk < 2; blk++) 
+                    for (int blk = 0; blk < 2; blk++)
                         for (int blk8x8 = 0; blk8x8 < 2; blk8x8++)
                             fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8 * 2 + blk] = SIZE_NONE;
                 }
                 //test SIZE_2NxN
                 if (cost16x16_2NxN[blk32x32][blk16x16] <= cost16x16_min[blk32x32][blk16x16]) {
-                    cost16x16_min[blk32x32][blk16x16]         = cost16x16_2NxN[blk32x32][blk16x16];
+                    cost16x16_min[blk32x32][blk16x16]           = cost16x16_2NxN[blk32x32][blk16x16];
                     fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_2NxN;
                     //clear
-                    for (int blk = 0; blk < 2; blk++) 
-                        for (int blk8x8 = 0; blk8x8 < 2; blk8x8++) 
+                    for (int blk = 0; blk < 2; blk++)
+                        for (int blk8x8 = 0; blk8x8 < 2; blk8x8++)
                             fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8 + blk * 2] = SIZE_NONE;
                 }
                 //test SIZE_2Nx2N
                 if (cost16x16_2Nx2N[blk32x32][blk16x16] <= cost16x16_min[blk32x32][blk16x16]) {
-                    cost16x16_min[blk32x32][blk16x16]         = cost16x16_2Nx2N[blk32x32][blk16x16];
+                    cost16x16_min[blk32x32][blk16x16]           = cost16x16_2Nx2N[blk32x32][blk16x16];
                     fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_2Nx2N;
                     //clear
-                    for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) 
+                    for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
                         fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_NONE; //downsize mode = size_none]
                 }
             }
@@ -348,23 +386,23 @@ void FME::fmepartition()
 
         part_x = 32 * (blk32x32 % 2);
         part_y = 32 * (blk32x32 / 2);
-        if ( !((is_x_Boundry&&((part_x+31)>x_Boundry)) || (is_y_Boundry&&((part_y+31)>y_Boundry))) ) {
+        if (!((is_x_Boundry && ((part_x + 31) > x_Boundry)) || (is_y_Boundry && ((part_y + 31) > y_Boundry)))) {
             //test SIZE_Nx2N
             if (cost32x32_Nx2N[blk32x32] <= cost32x32_min[blk32x32]) {
-                cost32x32_min[blk32x32]         = cost32x32_Nx2N[blk32x32];
+                cost32x32_min[blk32x32]           = cost32x32_Nx2N[blk32x32];
                 fme_input.cu_32x32_mode[blk32x32] = SIZE_Nx2N;
                 //clear
                 for (int blk = 0; blk < 2; blk++) {
                     for (int blk16x16 = 0; blk16x16 < 2; blk16x16++) {
                         fme_input.cu_16x16_mode[blk32x32][blk16x16 * 2 + blk] = SIZE_NONE; //downsize mode = size_none
-                        for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) 
+                        for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
                             fme_input.cu_8x8_mode[blk32x32][blk16x16 * 2 + blk][blk8x8] = SIZE_NONE;
                     }
                 }
             }
             //test SIZE_2NxN
             if (cost32x32_2NxN[blk32x32] <= cost32x32_min[blk32x32]) {
-                cost32x32_min[blk32x32]         = cost32x32_2NxN[blk32x32];
+                cost32x32_min[blk32x32]           = cost32x32_2NxN[blk32x32];
                 fme_input.cu_32x32_mode[blk32x32] = SIZE_2NxN;
                 //clear
                 for (int blk = 0; blk < 2; blk++) {
@@ -378,12 +416,12 @@ void FME::fmepartition()
 
             //test SIZE_2Nx2N
             if (cost32x32_2Nx2N[blk32x32] <= cost32x32_min[blk32x32]) {
-                cost32x32_min[blk32x32]         = cost32x32_2Nx2N[blk32x32];
+                cost32x32_min[blk32x32]           = cost32x32_2Nx2N[blk32x32];
                 fme_input.cu_32x32_mode[blk32x32] = SIZE_2Nx2N;
                 //clear
                 for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
                     fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_NONE; //downsize mode = size_none
-                    for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) 
+                    for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
                         fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_NONE; //downsize mode = size_none
                 }
             }
@@ -397,10 +435,10 @@ void FME::fmepartition()
 
     part_x = 0;
     part_y = 0;
-    if ( !((is_x_Boundry&&((part_x+63)>x_Boundry)) || (is_y_Boundry&&((part_y+63)>y_Boundry))) ) {
+    if (!((is_x_Boundry && ((part_x + 63) > x_Boundry)) || (is_y_Boundry && ((part_y + 63) > y_Boundry)))) {
         //test SIZE_Nx2N
         if (cost64x64_Nx2N <= cost64x64_min) {
-            cost64x64_min         = cost64x64_Nx2N;
+            cost64x64_min           = cost64x64_Nx2N;
             fme_input.cu_64x64_mode = SIZE_Nx2N;
             //clear
             for (int blk = 0; blk < 2; blk++) {
@@ -416,7 +454,7 @@ void FME::fmepartition()
         }
         //test SIZE_2NxN
         if (cost64x64_2NxN <= cost64x64_min) {
-            cost64x64_min         = cost64x64_2NxN;
+            cost64x64_min           = cost64x64_2NxN;
             fme_input.cu_64x64_mode = SIZE_2NxN;
             //clear
             for (int blk = 0; blk < 2; blk++) {
@@ -424,7 +462,7 @@ void FME::fmepartition()
                     fme_input.cu_32x32_mode[blk32x32 + blk * 2] = SIZE_NONE;
                     for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
                         fme_input.cu_16x16_mode[blk32x32 + blk * 2][blk16x16] = SIZE_NONE; //downsize mode = size_none
-                        for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) 
+                        for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
                             fme_input.cu_8x8_mode[blk32x32 + blk * 2][blk16x16][blk8x8] = SIZE_NONE;
                     }
                 }
@@ -432,21 +470,20 @@ void FME::fmepartition()
         }
         //test SIZE_2Nx2N
         if (cost64x64_2Nx2N <= cost64x64_min) {
-            cost64x64_min         = cost64x64_2Nx2N;
+            cost64x64_min           = cost64x64_2Nx2N;
             fme_input.cu_64x64_mode = SIZE_2Nx2N;
             //clear
             for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
                 fme_input.cu_32x32_mode[blk32x32] = SIZE_NONE; //downsize mode = size_none
                 for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
                     fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_NONE; //downsize mode = size_none
-                    for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) 
+                    for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
                         fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_NONE; //downsize mode = size_none
                 }
             }
         }
     }
 }
-
 
 void FME::fmectu()
 {
@@ -631,7 +668,7 @@ int32_t FME::fme32x32(int blk32x32)
                     for (int k = 0; k < 2; k++) {
                         fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k]                                                               = mv[k];
                         mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
-                        fmecost[blk32x32][blk16x16][blk8x8][i] = cost32x32;
+                        fmecost[blk32x32][blk16x16][blk8x8][i]                                                                             = cost32x32;
                     }
         break;
     case SIZE_2NxN:
@@ -664,7 +701,7 @@ int32_t FME::fme32x32(int blk32x32)
                         for (int k = 0; k < 2; k++) {
                             fme_output.fmv_8x8[blk32x32][blk16x16 + blk * 2][blk8x8][i][k]                                                                             = mv[k];
                             mv_store[blk32x32 / 2 * 4 + (blk * 2 + blk16x16) / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + (blk * 2 + blk16x16) % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
-                            fmecost[blk32x32][blk16x16 + blk * 2][blk8x8][i] = cost32x16;
+                            fmecost[blk32x32][blk16x16 + blk * 2][blk8x8][i]                                                                                           = cost32x16;
                         }
         }
         break;
@@ -698,7 +735,7 @@ int32_t FME::fme32x32(int blk32x32)
                         for (int k = 0; k < 2; k++) {
                             fme_output.fmv_8x8[blk32x32][blk16x16 * 2 + blk][blk8x8][i][k]                                                                             = mv[k];
                             mv_store[blk32x32 / 2 * 4 + (blk16x16 * 2 + blk) / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + (blk16x16 * 2 + blk) % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
-                            fmecost[blk32x32][blk16x16 * 2 + blk][blk8x8][i] = cost16x32;
+                            fmecost[blk32x32][blk16x16 * 2 + blk][blk8x8][i]                                                                                           = cost16x32;
                         }
         }
         break;
@@ -761,7 +798,7 @@ int32_t FME::fme16x16(int blk32x32, int blk16x16)
                 for (int k = 0; k < 2; k++) {
                     fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k]                                                               = mv[k];
                     mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
-                    fmecost[blk32x32][blk16x16][blk8x8][i] = cost16x16;
+                    fmecost[blk32x32][blk16x16][blk8x8][i]                                                                             = cost16x16;
                 }
         break;
     case SIZE_2NxN:
@@ -793,7 +830,7 @@ int32_t FME::fme16x16(int blk32x32, int blk16x16)
                     for (int k = 0; k < 2; k++) {
                         fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 + blk * 2][i][k]                                                                             = mv[k];
                         mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + (blk8x8 + blk * 2) / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + (blk8x8 + blk * 2) % 2][i][k] = mv[k];
-                        fmecost[blk32x32][blk16x16][blk8x8 + blk * 2][i] = cost16x8;
+                        fmecost[blk32x32][blk16x16][blk8x8 + blk * 2][i]                                                                                           = cost16x8;
                     }
         }
         break;
@@ -827,7 +864,7 @@ int32_t FME::fme16x16(int blk32x32, int blk16x16)
                     for (int k = 0; k < 2; k++) {
                         fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 * 2 + blk][i][k]                                                                             = mv[k];
                         mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + (blk8x8 * 2 + blk) / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + (blk8x8 * 2 + blk) % 2][i][k] = mv[k];
-                        fmecost[blk32x32][blk16x16][blk8x8 * 2 + blk][i] = cost8x16;
+                        fmecost[blk32x32][blk16x16][blk8x8 * 2 + blk][i]                                                                                           = cost8x16;
                     }
         }
         break;
@@ -889,7 +926,7 @@ int32_t FME::fme8x8(int blk32x32, int blk16x16, int blk8x8)
             for (int k = 0; k < 2; k++) {
                 fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k]                                                               = mv[k];
                 mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
-                fmecost[blk32x32][blk16x16][blk8x8][i] = cost8x8;
+                fmecost[blk32x32][blk16x16][blk8x8][i]                                                                             = cost8x8;
             }
         break;
     case SIZE_2NxN:
@@ -920,7 +957,7 @@ int32_t FME::fme8x8(int blk32x32, int blk16x16, int blk8x8)
             for (int k = 0; k < 2; k++) {
                 fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][blk][k]                                                               = mv[k];
                 mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][blk][k] = mv[k];
-                fmecost[blk32x32][blk16x16][blk8x8][blk] = cost8x4;
+                fmecost[blk32x32][blk16x16][blk8x8][blk]                                                                             = cost8x4;
             }
         }
         break;
@@ -951,7 +988,7 @@ int32_t FME::fme8x8(int blk32x32, int blk16x16, int blk8x8)
             for (int k = 0; k < 2; k++) {
                 fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 * 2][blk][k]                                                           = mv[k];
                 mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][blk][k] = mv[k];
-                fmecost[blk32x32][blk16x16][blk8x8][blk] = cost4x8;
+                fmecost[blk32x32][blk16x16][blk8x8][blk]                                                                             = cost4x8;
             }
         }
         break;
@@ -976,25 +1013,25 @@ void FME::interpolate_h(int pos_x, int pos_y, int len_x, int len_y)
     for (int row = 0; row < (len_y + 8); row++) {
         for (int col = 0; col < (len_x + 1); col++) {
             H_8TAPFIR<int16_t, PIXEL>(&h_buf[row][col],
-                                    sw_cache[pos_y - 4 + row][pos_x - 4 + col],
-                                    sw_cache[pos_y - 4 + row][pos_x - 3 + col],
-                                    sw_cache[pos_y - 4 + row][pos_x - 2 + col],
-                                    sw_cache[pos_y - 4 + row][pos_x - 1 + col],
-                                    sw_cache[pos_y - 4 + row][pos_x + col],
-                                    sw_cache[pos_y - 4 + row][pos_x + 1 + col],
-                                    sw_cache[pos_y - 4 + row][pos_x + 2 + col],
-                                    sw_cache[pos_y - 4 + row][pos_x + 3 + col],
-                                    true,  //isFirst
-                                    false  //isLast
+                                      sw_cache[pos_y - 4 + row][pos_x - 4 + col],
+                                      sw_cache[pos_y - 4 + row][pos_x - 3 + col],
+                                      sw_cache[pos_y - 4 + row][pos_x - 2 + col],
+                                      sw_cache[pos_y - 4 + row][pos_x - 1 + col],
+                                      sw_cache[pos_y - 4 + row][pos_x + col],
+                                      sw_cache[pos_y - 4 + row][pos_x + 1 + col],
+                                      sw_cache[pos_y - 4 + row][pos_x + 2 + col],
+                                      sw_cache[pos_y - 4 + row][pos_x + 3 + col],
+                                      true, //isFirst
+                                      false //isLast
             );
         }
     }
     // horizontal interpolation (used for ME)
     for (int row = 0; row < len_y; row++) {
         for (int col = 0; col < (len_x + 1); col++) {
-            int a                = (IF_INTERNAL_OFFS + (1<< (max(2, (IF_INTERNAL_PREC - BIT_DEPTH))-1)) );
-            int temp_temp        = (h_buf[row + 4][col] + a) >> IF_FILTER_PREC;
-            PIXEL temp             = Cliply(temp_temp);
+            int   a              = (IF_INTERNAL_OFFS + (1 << (max(2, (IF_INTERNAL_PREC - BIT_DEPTH)) - 1)));
+            int   temp_temp      = (h_buf[row + 4][col] + a) >> IF_FILTER_PREC;
+            PIXEL temp           = Cliply(temp_temp);
             h_half_pel[row][col] = temp;
         }
     }
@@ -1011,8 +1048,8 @@ void FME::interpolate_h(int pos_x, int pos_y, int len_x, int len_y)
                                     int_tmp[5 + row][col],
                                     int_tmp[6 + row][col],
                                     int_tmp[7 + row][col],
-                                    true,  //isFirst
-                                    true   //isLast
+                                    true, //isFirst
+                                    true  //isLast
             );
         }
     }
@@ -1027,16 +1064,16 @@ void FME::interpolate_h(int pos_x, int pos_y, int len_x, int len_y)
     for (int row = 0; row < (len_y + 1); row++) {
         for (int col = 0; col < (len_x + 1); col++) {
             H_8TAPFIR<PIXEL, int16_t>(&d_half_pel[row][col],
-                                    h_buf[row][col],
-                                    h_buf[row + 1][col],
-                                    h_buf[row + 2][col],
-                                    h_buf[row + 3][col],
-                                    h_buf[row + 4][col],
-                                    h_buf[row + 5][col],
-                                    h_buf[row + 6][col],
-                                    h_buf[row + 7][col],
-                                    false,  //isFirst
-                                    true    //isLast
+                                      h_buf[row][col],
+                                      h_buf[row + 1][col],
+                                      h_buf[row + 2][col],
+                                      h_buf[row + 3][col],
+                                      h_buf[row + 4][col],
+                                      h_buf[row + 5][col],
+                                      h_buf[row + 6][col],
+                                      h_buf[row + 7][col],
+                                      false, //isFirst
+                                      true   //isLast
             );
         }
     }
@@ -1080,15 +1117,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
     for (int row = 0; row < extheight; row++) {
         for (int col = 0; col < len_x; col++) {
             Q_8TAPFIR_1<int16_t, PIXEL>(&q1_buf[row][col],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 4 + col + offset_x],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 3 + col + offset_x],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 2 + col + offset_x],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 1 + col + offset_x],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + col + offset_x],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + 1 + col + offset_x],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + 2 + col + offset_x],
-                                      true, //isFirst
-                                      false //isLast
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 4 + col + offset_x],
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 3 + col + offset_x],
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 2 + col + offset_x],
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 1 + col + offset_x],
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + col + offset_x],
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + 1 + col + offset_x],
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + 2 + col + offset_x],
+                                        true, //isFirst
+                                        false //isLast
             );
         }
     }
@@ -1104,15 +1141,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
     for (int row = 0; row < extheight; row++) {
         for (int col = 0; col < len_x; col++) {
             Q_8TAPFIR_3<int16_t, PIXEL>(&q3_buf[row][col],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 3 + col + offset_x],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 2 + col + offset_x],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 1 + col + offset_x],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + col + offset_x],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + 1 + col + offset_x],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + 2 + col + offset_x],
-                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + 3 + col + offset_x],
-                                      true, //isFirst
-                                      false //isLast
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 3 + col + offset_x],
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 2 + col + offset_x],
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 1 + col + offset_x],
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + col + offset_x],
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + 1 + col + offset_x],
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + 2 + col + offset_x],
+                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + 3 + col + offset_x],
+                                        true, //isFirst
+                                        false //isLast
             );
         }
     }
@@ -1134,15 +1171,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 Q_8TAPFIR_1<PIXEL, int16_t>(&qbuf[1][1][row][col],
-                                          q1_buf[row + offset_y][col],
-                                          q1_buf[row + offset_y + 1][col],
-                                          q1_buf[row + offset_y + 2][col],
-                                          q1_buf[row + offset_y + 3][col],
-                                          q1_buf[row + offset_y + 4][col],
-                                          q1_buf[row + offset_y + 5][col],
-                                          q1_buf[row + offset_y + 6][col],
-                                          false, //isFirst
-                                          true  //isLast
+                                            q1_buf[row + offset_y][col],
+                                            q1_buf[row + offset_y + 1][col],
+                                            q1_buf[row + offset_y + 2][col],
+                                            q1_buf[row + offset_y + 3][col],
+                                            q1_buf[row + offset_y + 4][col],
+                                            q1_buf[row + offset_y + 5][col],
+                                            q1_buf[row + offset_y + 6][col],
+                                            false, //isFirst
+                                            true   //isLast
                 );
             }
         }
@@ -1151,6 +1188,27 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 Q_8TAPFIR_3<PIXEL, int16_t>(&qbuf[3][1][row][col],
+                                            q1_buf[row + 1][col],
+                                            q1_buf[row + 2][col],
+                                            q1_buf[row + 3][col],
+                                            q1_buf[row + 4][col],
+                                            q1_buf[row + 5][col],
+                                            q1_buf[row + 6][col],
+                                            q1_buf[row + 7][col],
+                                            false, //isFirst
+                                            true   //isLast
+                );
+            }
+        }
+    }
+
+    //step 2:  interpolate 3/4 pixels vertically
+    if (dmv[1] != 0) {
+        //@2,1
+        for (int row = 0; row < len_y; row++) {
+            for (int col = 0; col < len_x; col++) {
+                H_8TAPFIR<PIXEL, int16_t>(&qbuf[2][1][row][col],
+                                          q1_buf[row][col],
                                           q1_buf[row + 1][col],
                                           q1_buf[row + 2][col],
                                           q1_buf[row + 3][col],
@@ -1163,42 +1221,21 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
                 );
             }
         }
-    }
-
-    //step 2:  interpolate 3/4 pixels vertically
-    if (dmv[1] != 0) {
-        //@2,1
-        for (int row = 0; row < len_y; row++) {
-            for (int col = 0; col < len_x; col++) {
-                H_8TAPFIR<PIXEL, int16_t>(&qbuf[2][1][row][col],
-                                        q1_buf[row][col],
-                                        q1_buf[row + 1][col],
-                                        q1_buf[row + 2][col],
-                                        q1_buf[row + 3][col],
-                                        q1_buf[row + 4][col],
-                                        q1_buf[row + 5][col],
-                                        q1_buf[row + 6][col],
-                                        q1_buf[row + 7][col],
-                                        false, //isFirst
-                                        true   //isLast
-                );
-            }
-        }
 
         //@2,3
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 H_8TAPFIR<PIXEL, int16_t>(&qbuf[2][3][row][col],
-                                        q3_buf[row][col],
-                                        q3_buf[row + 1][col],
-                                        q3_buf[row + 2][col],
-                                        q3_buf[row + 3][col],
-                                        q3_buf[row + 4][col],
-                                        q3_buf[row + 5][col],
-                                        q3_buf[row + 6][col],
-                                        q3_buf[row + 7][col],
-                                        false, //isFirst
-                                        true   //isLast
+                                          q3_buf[row][col],
+                                          q3_buf[row + 1][col],
+                                          q3_buf[row + 2][col],
+                                          q3_buf[row + 3][col],
+                                          q3_buf[row + 4][col],
+                                          q3_buf[row + 5][col],
+                                          q3_buf[row + 6][col],
+                                          q3_buf[row + 7][col],
+                                          false, //isFirst
+                                          true   //isLast
                 );
             }
         }
@@ -1206,7 +1243,7 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         //@0,1
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
-                int a                = (IF_INTERNAL_OFFS + (1<< (max(2, (IF_INTERNAL_PREC - BIT_DEPTH))-1)) );
+                int a                = (IF_INTERNAL_OFFS + (1 << (max(2, (IF_INTERNAL_PREC - BIT_DEPTH)) - 1)));
                 int temp_temp        = (q1_buf[row + 4][col] + a) >> IF_FILTER_PREC;
                 qbuf[0][1][row][col] = Cliply(temp_temp);
             }
@@ -1214,7 +1251,7 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         //@0,3
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
-                int a                = (IF_INTERNAL_OFFS + (1<< (max(2, (IF_INTERNAL_PREC - BIT_DEPTH))-1)) );
+                int a                = (IF_INTERNAL_OFFS + (1 << (max(2, (IF_INTERNAL_PREC - BIT_DEPTH)) - 1)));
                 int temp             = (q3_buf[row + 4][col] + a) >> IF_FILTER_PREC;
                 qbuf[0][3][row][col] = Cliply(temp);
             }
@@ -1245,15 +1282,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 Q_8TAPFIR_1<PIXEL, int16_t>(&qbuf[1][2][row][col],
-                                          h_buf[row + offset_y][col + offset_x],
-                                          h_buf[row + offset_y + 1][col + offset_x],
-                                          h_buf[row + offset_y + 2][col + offset_x],
-                                          h_buf[row + offset_y + 3][col + offset_x],
-                                          h_buf[row + offset_y + 4][col + offset_x],
-                                          h_buf[row + offset_y + 5][col + offset_x],
-                                          h_buf[row + offset_y + 6][col + offset_x],
-                                          false, //isFirst
-                                          true   //isLast
+                                            h_buf[row + offset_y][col + offset_x],
+                                            h_buf[row + offset_y + 1][col + offset_x],
+                                            h_buf[row + offset_y + 2][col + offset_x],
+                                            h_buf[row + offset_y + 3][col + offset_x],
+                                            h_buf[row + offset_y + 4][col + offset_x],
+                                            h_buf[row + offset_y + 5][col + offset_x],
+                                            h_buf[row + offset_y + 6][col + offset_x],
+                                            false, //isFirst
+                                            true   //isLast
                 );
             }
         }
@@ -1269,15 +1306,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 Q_8TAPFIR_3<PIXEL, int16_t>(&qbuf[3][2][row][col],
-                                          h_buf[row + offset_y + 1][col + offset_x],
-                                          h_buf[row + offset_y + 2][col + offset_x],
-                                          h_buf[row + offset_y + 3][col + offset_x],
-                                          h_buf[row + offset_y + 4][col + offset_x],
-                                          h_buf[row + offset_y + 5][col + offset_x],
-                                          h_buf[row + offset_y + 6][col + offset_x],
-                                          h_buf[row + offset_y + 7][col + offset_x],
-                                          false, //isFirst
-                                          true   //isLast
+                                            h_buf[row + offset_y + 1][col + offset_x],
+                                            h_buf[row + offset_y + 2][col + offset_x],
+                                            h_buf[row + offset_y + 3][col + offset_x],
+                                            h_buf[row + offset_y + 4][col + offset_x],
+                                            h_buf[row + offset_y + 5][col + offset_x],
+                                            h_buf[row + offset_y + 6][col + offset_x],
+                                            h_buf[row + offset_y + 7][col + offset_x],
+                                            false, //isFirst
+                                            true   //isLast
                 );
             }
         }
@@ -1344,15 +1381,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 Q_8TAPFIR_1<PIXEL, int16_t>(&qbuf[1][3][row][col],
-                                          q3_buf[row + offset_y][col],
-                                          q3_buf[row + offset_y + 1][col],
-                                          q3_buf[row + offset_y + 2][col],
-                                          q3_buf[row + offset_y + 3][col],
-                                          q3_buf[row + offset_y + 4][col],
-                                          q3_buf[row + offset_y + 5][col],
-                                          q3_buf[row + offset_y + 6][col],
-                                          false, //isFirst
-                                          true   //isLast
+                                            q3_buf[row + offset_y][col],
+                                            q3_buf[row + offset_y + 1][col],
+                                            q3_buf[row + offset_y + 2][col],
+                                            q3_buf[row + offset_y + 3][col],
+                                            q3_buf[row + offset_y + 4][col],
+                                            q3_buf[row + offset_y + 5][col],
+                                            q3_buf[row + offset_y + 6][col],
+                                            false, //isFirst
+                                            true   //isLast
                 );
             }
         }
@@ -1361,15 +1398,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 Q_8TAPFIR_3<PIXEL, int16_t>(&qbuf[3][3][row][col],
-                                          q3_buf[row + 1][col],
-                                          q3_buf[row + 2][col],
-                                          q3_buf[row + 3][col],
-                                          q3_buf[row + 4][col],
-                                          q3_buf[row + 5][col],
-                                          q3_buf[row + 6][col],
-                                          q3_buf[row + 7][col],
-                                          false, //isFirst
-                                          true   //isLast
+                                            q3_buf[row + 1][col],
+                                            q3_buf[row + 2][col],
+                                            q3_buf[row + 3][col],
+                                            q3_buf[row + 4][col],
+                                            q3_buf[row + 5][col],
+                                            q3_buf[row + 6][col],
+                                            q3_buf[row + 7][col],
+                                            false, //isFirst
+                                            true   //isLast
                 );
             }
         }
@@ -1404,8 +1441,6 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
     }
 }
 
-
-
 uint32_t FME::sub_hadmard_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk)
 {
     int      k, i, j, jj;
@@ -1428,11 +1463,11 @@ uint32_t FME::sub_hadmard_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk)
     //horizontal
     for (j = 0; j < 8; j++) {
         jj       = j << 3;
-        m2[j][0] = diff[jj    ] + diff[jj + 4];
+        m2[j][0] = diff[jj] + diff[jj + 4];
         m2[j][1] = diff[jj + 1] + diff[jj + 5];
         m2[j][2] = diff[jj + 2] + diff[jj + 6];
         m2[j][3] = diff[jj + 3] + diff[jj + 7];
-        m2[j][4] = diff[jj    ] - diff[jj + 4];
+        m2[j][4] = diff[jj] - diff[jj + 4];
         m2[j][5] = diff[jj + 1] - diff[jj + 5];
         m2[j][6] = diff[jj + 2] - diff[jj + 6];
         m2[j][7] = diff[jj + 3] - diff[jj + 7];
@@ -1530,7 +1565,7 @@ uint32_t FME::sub_hadmard_satd(PIXEL *cur_4x4blk, PIXEL *ref_4x4blk)
 }
 
 void FME::hadamard_1d(int16_t &o_data0, int16_t &o_data1, int16_t &o_data2, int16_t &o_data3,
-                 int16_t i_data0, int16_t i_data1, int16_t i_data2, int16_t i_data3)
+                      int16_t i_data0, int16_t i_data1, int16_t i_data2, int16_t i_data3)
 {
     int16_t wire0 = i_data0 + i_data1;
     int16_t wire1 = i_data0 - i_data1;

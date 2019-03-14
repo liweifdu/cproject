@@ -156,7 +156,7 @@ private:
     uint32_t cost64x64_2Nx2N, cost64x64_Nx2N, cost64x64_2NxN;
     uint32_t cost32x32_2Nx2N[4], cost32x32_Nx2N[4], cost32x32_2NxN[4];
     uint32_t cost16x16_2Nx2N[4][4], cost16x16_Nx2N[4][4], cost16x16_2NxN[4][4];
-    uint32_t cost8x8[4][4][4];
+    uint32_t cost8x8_2Nx2N[4][4][4];
 
 	// fme min cost used for comparison
     uint32_t cost8x8_min[4][4][4];
@@ -181,7 +181,7 @@ private:
     void fme8x8cost(int blk32x32, int blk16x16, int blk8x8);
 
 	//distortion calculation func
-    uint32_t distortion(int pos_x, int pos_y, int len_x, int len_y, int16_t mv[2], int min_index);
+    uint32_t calcRDSADCost(int pos_x, int pos_y, int len_x, int len_y, int16_t mv[2], int min_index);
 
 	// sub-fme partition func
     void fmepartition();
