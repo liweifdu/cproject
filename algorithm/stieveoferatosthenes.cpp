@@ -9,10 +9,11 @@ int main(){
     memset(a, 1, sizeof(a));
     for(int i = 2; i < N; ++i)
         if(a[i])
-            for(int j = i; j*i < N; j++)
+            for(int j = i; j*i < N; ++j)
                 a[i*j] = 0;
     for(int i = 2; i < N; i++)
         if (a[i])
             cout << " " << i;
     cout << endl;
 }
+
