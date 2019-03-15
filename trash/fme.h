@@ -180,8 +180,12 @@ private:
     void fme16x16cost(int blk32x32, int blk16x16, int splitmode);
     void fme8x8cost(int blk32x32, int blk16x16, int blk8x8);
 
-	//distortion calculation func
+	// load from x265
+	void fmeloadx265();
+
+	//distortion calculation func and dump
     uint32_t calcRDSADCost(int pos_x, int pos_y, int len_x, int len_y, int16_t mv[2], int min_index);
+    void     dumpcost();
 
 	// sub-fme partition func
     void fmepartition();
@@ -191,6 +195,7 @@ private:
                      int16_t i_data0, int16_t i_data1, int16_t i_data2, int16_t i_data3);
     uint32_t sub_hadmard_satd(PIXEL *cur_4x4blk, PIXEL *ref_4x4blk);
     uint32_t sub_hadmard_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk);
+    int x265_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk);
 
     //------ fme common function ------//
     // interpolation func

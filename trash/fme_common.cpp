@@ -11,6 +11,26 @@
 #include "fme.h"
 #include <time.h>
 
+#define BITS_PER_SUM (8 * sizeof(uint16_t))
+#define HADAMARD4(d0, d1, d2, d3, s0, s1, s2, s3) \
+    {                                             \
+		uint32_t t0 = s0 + s1; \
+        uint32_t t2 = s2 + s3; \
+        uint32_t t3 = s2 - s3; \
+        uint32_t t1 = s0 - s1; \
+        d0 = t0 + t2;\
+        d2 = t0 - t2;\
+        d1 = t1 + t3;\
+        d3 = t1 - t3;\
+    }
+
+inline uint32_t abs2(uint32_t a)
+{
+    uint32_t s = ((a >> (BITS_PER_SUM - 1)) & (((uint32_t)1 << BITS_PER_SUM) + 1)) * ((uint16_t)-1);
+
+    return (a + s) ^ s;
+}
+
 /****************************************************************************
  * fme common function
  ****************************************************************************/
@@ -30,14 +50,90 @@ void FME::fme64x64()
 
     memcpy(fme_output.fmv_8x8, fme_input.mv_8x8, sizeof(fme_input.mv_8x8));
 
+	//initial cost
+    cost64x64_2Nx2N = 0, cost64x64_Nx2N = 0, cost64x64_2NxN = 0;
+    memset(cost32x32_2Nx2N, 0, sizeof(cost32x32_2Nx2N));
+    memset(cost32x32_2NxN, 0, sizeof(cost32x32_2NxN));
+    memset(cost32x32_Nx2N, 0, sizeof(cost32x32_Nx2N));
+    memset(cost16x16_2Nx2N, 0, sizeof(cost16x16_2Nx2N));
+    memset(cost16x16_2NxN, 0, sizeof(cost16x16_2NxN));
+    memset(cost16x16_Nx2N, 0, sizeof(cost16x16_Nx2N));
+    memset(cost8x8_2Nx2N, 0, sizeof(cost8x8_2Nx2N));
+
+	//load x265 mv
+	//fmeloadx265();
+
     //calculate cost
     fme64x64cost();
 
     //partition decision
     fmepartition();
 
+    //dump cost
+    //dumpcost();
+
     //do fme
     fmectu();
+}
+
+void FME::fmeloadx265()
+{
+	int safe_temp = 0;
+	FILE *fp = fopen("x265_fme.dat", "rb");
+	for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
+		for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
+			for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) {
+				fscanf(fp, "%x", &safe_temp);
+				fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][0][0] = safe_temp;
+				fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][1][0] = safe_temp;
+				fscanf(fp, "%x", &safe_temp);
+				fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][0][1] = safe_temp;
+				fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][1][1] = safe_temp;
+			}
+			for (int index = 0; index < 3; index++) {
+				fscanf(fp, "%x", &safe_temp);
+				fme_input.mv_16x16[blk32x32][blk16x16][index] = safe_temp;
+			}
+		}
+		for (int index = 0; index < 3; index++) {
+			fscanf(fp, "%x", &safe_temp);
+			fme_input.mv_32x32[blk32x32][index] = safe_temp;
+		}
+	}
+	for (int index = 0; index < 3; index++) {
+		fscanf(fp, "%x", &safe_temp);
+		fme_input.mv_64x64[index] = safe_temp;
+	}
+}
+
+
+void FME::dumpcost()
+{
+    FILE *fp = fopen("fme_cost.dat", "a");
+    for (int blk64x64 = 0; blk64x64 < 1; blk64x64++) {
+        fprintf(fp, "cu_idx = %02d\n", blk64x64);
+        fprintf(fp, "cost64x64_2Nx2N = %08x\n", cost64x64_2Nx2N);
+        fprintf(fp, "cost64x64_2NxN  = %08x\n", cost64x64_2NxN);
+        fprintf(fp, "cost64x64_Nx2N  = %08x\n", cost64x64_Nx2N);
+        for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
+            fprintf(fp, "cu_idx = %02d\n", 1 + blk32x32);
+            fprintf(fp, "cost32x32_2Nx2N = %08x\n", cost32x32_2Nx2N[blk32x32]);
+            fprintf(fp, "cost32x32_2NxN  = %08x\n", cost32x32_2NxN[blk32x32]);
+            fprintf(fp, "cost32x32_Nx2N  = %08x\n", cost32x32_Nx2N[blk32x32]);
+            for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
+                fprintf(fp, "cu_idx = %02d\n", (1 + ((1 + blk32x32) << 2) + blk16x16));
+                fprintf(fp, "cost16x16_2Nx2N = %08x\n", cost16x16_2Nx2N[blk32x32][blk16x16]);
+                fprintf(fp, "cost16x16_2NxN  = %08x\n", cost16x16_2NxN[blk32x32][blk16x16]);
+                fprintf(fp, "cost16x16_Nx2N  = %08x\n", cost16x16_Nx2N[blk32x32][blk16x16]);
+                for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) {
+                    fprintf(fp, "cu_idx = %02d\n", (((1 + ((1 + blk32x32) << 2) + blk16x16) << 2) + blk8x8 + 1));
+                    fprintf(fp, "cost8x8_2Nx2N = %08x\n", cost8x8_2Nx2N[blk32x32][blk16x16][blk8x8]);
+                }
+            }
+        }
+    }
+    fprintf(fp, "\n");
+    fclose(fp);
 }
 
 uint32_t FME::calcRDSADCost(int pos_x, int pos_y, int len_x, int len_y, int16_t mv[2], int min_index)
@@ -54,6 +150,7 @@ uint32_t FME::calcRDSADCost(int pos_x, int pos_y, int len_x, int len_y, int16_t 
 
 void FME::fme64x64cost()
 {
+	
     int min_index;
     for (int splitmode = 0; splitmode < 4; splitmode++) {
         switch (splitmode) {
@@ -245,7 +342,7 @@ void FME::fme16x16cost(int blk32x32, int blk16x16, int splitmode)
         min_index                           = (dmv[1] + 1) * 3 + dmv[0] + 1;
         uint32_t cost16x16                  = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 16, mv, min_index);
         cost16x16_2Nx2N[blk32x32][blk16x16] = cost16x16;
-	}break;
+    } break;
     case SIZE_2NxN: {
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
         for (int blk = 0; blk < 2; blk++) {
@@ -269,7 +366,7 @@ void FME::fme16x16cost(int blk32x32, int blk16x16, int splitmode)
             uint32_t cost16x8 = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 8, mv, min_index);
             cost16x16_2NxN[blk32x32][blk16x16] += cost16x8;
         }
-	}break;
+    } break;
     case SIZE_Nx2N: {
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
         for (int blk = 0; blk < 2; blk++) {
@@ -294,8 +391,8 @@ void FME::fme16x16cost(int blk32x32, int blk16x16, int splitmode)
             uint32_t cost8x16 = calcRDSADCost(cur_pos[0], cur_pos[1], 8, 16, mv, min_index);
             cost16x16_Nx2N[blk32x32][blk16x16] += cost8x16;
         }
-	}break;
-    case SPLIT:
+    } break;
+    case 3:
         for (int blk = 0; blk < 4; blk++) {
             fme8x8cost(blk32x32, blk16x16, blk);
         }
@@ -1530,6 +1627,41 @@ uint32_t FME::sub_hadmard_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk)
     sad = ((sad + 2) >> 2);
 
     return sad;
+}
+
+int FME::x265_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk) {
+    uint32_t tmp[8][4];
+    uint32_t a0, a1, a2, a3, a4, a5, a6, a7, b0, b1, b2, b3;
+    uint32_t sum = 0;
+
+    for (int i = 0; i < 8; i++, cur_8x8blk += 8, ref_8x8blk += 8) {
+        a0 = cur_8x8blk[0] - ref_8x8blk[0];
+        a1 = cur_8x8blk[1] - ref_8x8blk[1];
+        b0 = (a0 + a1) + ((a0 - a1) << BITS_PER_SUM);
+        a2 = cur_8x8blk[2] - ref_8x8blk[2];
+        a3 = cur_8x8blk[3] - ref_8x8blk[3];
+        b1 = (a2 + a3) + ((a2 - a3) << BITS_PER_SUM);
+        a4 = cur_8x8blk[4] - ref_8x8blk[4];
+        a5 = cur_8x8blk[5] - ref_8x8blk[5];
+        b2 = (a4 + a5) + ((a4 - a5) << BITS_PER_SUM);
+        a6 = cur_8x8blk[6] - ref_8x8blk[6];
+        a7 = cur_8x8blk[7] - ref_8x8blk[7];
+        b3 = (a6 + a7) + ((a6 - a7) << BITS_PER_SUM);
+        HADAMARD4(tmp[i][0], tmp[i][1], tmp[i][2], tmp[i][3], b0, b1, b2, b3);
+    }
+
+    for (int i = 0; i < 4; i++) {
+        HADAMARD4(a0, a1, a2, a3, tmp[0][i], tmp[1][i], tmp[2][i], tmp[3][i]);
+        HADAMARD4(a4, a5, a6, a7, tmp[4][i], tmp[5][i], tmp[6][i], tmp[7][i]);
+        b0 = abs2(a0 + a4) + abs2(a0 - a4);
+        b0 += abs2(a1 + a5) + abs2(a1 - a5);
+        b0 += abs2(a2 + a6) + abs2(a2 - a6);
+        b0 += abs2(a3 + a7) + abs2(a3 - a7);
+        sum += (uint16_t)b0 + (b0 >> BITS_PER_SUM);
+    }
+    sum = (((int)sum + 2) >> 2);
+
+    return (int)sum;
 }
 
 uint32_t FME::sub_hadmard_satd(PIXEL *cur_4x4blk, PIXEL *ref_4x4blk)
