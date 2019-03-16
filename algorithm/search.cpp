@@ -4,10 +4,11 @@ using namespace std;
 
 int seqsearch(int *a, int v, int l){
     for(int i = 0; i < l; ++i){
-        if(v == a[i])
+        if(v == a[i]){
             //return immediately can stop the code in advance
             cout << "the index of input is " << i << endl;
             return 0;
+        }
     }
     return -1;
 }
