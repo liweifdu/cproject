@@ -10,10 +10,15 @@ OUT_FILE="$CPP_NAME.o"
 
 #command
 g++ -g -std=c++11 -Wall -Wextra -pedantic $SRC_FILE -o $OUT_FILE
-./$OUT_FILE
+
 if [ -n "$2" ]
 then
-    echo Hello $1, glad to meet you
+    if [ -n "$3" ] 
+    then
+        ./$OUT_FILE $2 $3
+    else
+        ./$OUT_FILE $2 
+    fi
 else
     ./$OUT_FILE
 fi
