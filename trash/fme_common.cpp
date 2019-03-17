@@ -76,7 +76,7 @@ void FME::fme64x64()
     fmepartition();
 
     //dump cost
-    //dumpcost();
+    dumpcost();
 
     //do fme
     fmectu();
@@ -139,6 +139,7 @@ void FME::fmeloadx265()
 	int blk32x32, blk16x16, blk8x8;
 	for (int i = 0; i < 1000; i++) {
 		fscanf(fp, "%d", &safe_temp);
+		bool end_flag = (safe_temp == 4 ? true : false);
 		if (safe_temp > 20) {
 			blk32x32 = (safe_temp - 21) / 16;
 			blk16x16 = ((safe_temp - 21) / 4) % 4;
@@ -146,11 +147,11 @@ void FME::fmeloadx265()
 			fscanf(fp, "%x", &safe_temp);
 			for (int index = 0; index < 3; index++) 
 				for (int half = 0; half < 2; half++)
-					fme_input.mv_32x32_tmp[blk32x32][index][half][0] = safe_temp;
+					fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][index][half][0] = safe_temp;
 			fscanf(fp, "%x", &safe_temp);
 			for (int index = 0; index < 3; index++)
 				for (int half = 0; half < 2; half++)
-					fme_input.mv_32x32_tmp[blk32x32][index][half][1] = safe_temp;
+					fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][index][half][1] = safe_temp;
 
 		}
 		else if (safe_temp > 4) {
@@ -191,7 +192,7 @@ void FME::fmeloadx265()
 		}
 
 		//end of the ctu
-		if (safe_temp == 4)
+		if (end_flag)
 			break;
 	}
 }
