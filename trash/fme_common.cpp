@@ -60,8 +60,14 @@ void FME::fme64x64()
     memset(cost16x16_Nx2N, 0, sizeof(cost16x16_Nx2N));
     memset(cost8x8_2Nx2N, 0, sizeof(cost8x8_2Nx2N));
 
+	//initial mv
+	memset(fme_input.mv_8x8_tmp, 0, sizeof(fme_input.mv_8x8_tmp));
+	memset(fme_input.mv_16x16_tmp, 0, sizeof(fme_input.mv_16x16_tmp));
+	memset(fme_input.mv_32x32_tmp, 0, sizeof(fme_input.mv_32x32_tmp));
+	memset(fme_input.mv_64x64_tmp, 0, sizeof(fme_input.mv_64x64_tmp));
+
 	//load x265 mv
-	//fmeloadx265();
+	fmeloadx265();
 
     //calculate cost
     fme64x64cost();
@@ -78,10 +84,20 @@ void FME::fme64x64()
 
 void FME::fmeloadx265()
 {
+	int part_x;
+	int part_y;
 	int safe_temp = 0;
-	FILE *fp = fopen("x265_fme.dat", "rb");
+	FILE *fp = fopen("BasketballPass_22_interFullMV.log", "rb");
 	for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
+		part_x = 32 * (blk32x32 % 2);
+		part_y = 32 * (blk32x32 / 2);
+		if ((is_x_Boundry && ((part_x + 31) > x_Boundry)) || (is_y_Boundry && ((part_y + 31) > y_Boundry)))
+			continue;
 		for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
+			part_x = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
+			part_y = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+			if ((is_x_Boundry && ((part_x + 15) > x_Boundry)) || (is_y_Boundry && ((part_y + 15) > y_Boundry)))
+				continue;
 			for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) {
 				for (int index = 0; index < 3; index++) {
 					for (int half = 0; half < 2; half++) {
@@ -112,10 +128,8 @@ void FME::fmeloadx265()
 	}
 	for (int index = 0; index < 3; index++) {
 		for (int half = 0; half < 2; half++) {
-			fscanf(fp, "%x", &safe_temp);
-			fme_input.mv_64x64_tmp[index][half][0] = safe_temp;
-			fscanf(fp, "%x", &safe_temp);
-			fme_input.mv_64x64_tmp[index][half][1] = safe_temp;
+			fme_input.mv_64x64_tmp[index][half][0] = 0;
+			fme_input.mv_64x64_tmp[index][half][1] = 0;
 		}
 	}
 }
@@ -170,8 +184,8 @@ void FME::fme64x64cost()
         switch (splitmode) {
         case SIZE_2Nx2N: {
             cu_skip[0] = 0;
-            mv[0]      = fme_input.mv_8x8[0][0][0][0][0];
-            mv[1]      = fme_input.mv_8x8[0][0][0][0][1];
+            mv[0]      = fme_input.mv_64x64_tmp[0][0][0];
+            mv[1]      = fme_input.mv_64x64_tmp[0][0][1];
             cur_pos[0] = 0; // current pu position
             cur_pos[1] = 0;
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -193,8 +207,8 @@ void FME::fme64x64cost()
         case SIZE_2NxN: {
             cu_skip[0] = 0;
             for (int blk = 0; blk < 2; blk++) {
-                mv[0]      = fme_input.mv_8x8[blk * 2][0][0][0][0];
-                mv[1]      = fme_input.mv_8x8[blk * 2][0][0][0][1];
+                mv[0]      = fme_input.mv_64x64_tmp[2][blk][0];
+                mv[1]      = fme_input.mv_64x64_tmp[2][blk][1];
                 cur_pos[0] = 0;
                 cur_pos[1] = 32 * blk;
                 ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -217,8 +231,8 @@ void FME::fme64x64cost()
         case SIZE_Nx2N: {
             cu_skip[0] = 0;
             for (int blk = 0; blk < 2; blk++) {
-                mv[0]      = fme_input.mv_8x8[blk][0][0][0][0];
-                mv[1]      = fme_input.mv_8x8[blk][0][0][0][1];
+                mv[0]      = fme_input.mv_64x64_tmp[1][blk][0];
+                mv[1]      = fme_input.mv_64x64_tmp[1][blk][1];
                 cur_pos[0] = 32 * blk;
                 cur_pos[1] = 0;
                 ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -254,8 +268,8 @@ void FME::fme32x32cost(int blk32x32, int splitmode)
     switch (splitmode) {
     case SIZE_2Nx2N: {
         cu_skip[1 + blk32x32] = 0;
-        mv[0]                 = fme_input.mv_8x8[blk32x32][0][0][0][0];
-        mv[1]                 = fme_input.mv_8x8[blk32x32][0][0][0][1];
+        mv[0]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][0];
+        mv[1]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][1];
         cur_pos[0]            = 32 * (blk32x32 % 2); // current pu position
         cur_pos[1]            = 32 * (blk32x32 / 2);
         ref_pos[0]            = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -277,8 +291,8 @@ void FME::fme32x32cost(int blk32x32, int splitmode)
     case SIZE_2NxN: {
         cu_skip[1 + blk32x32] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk32x32][blk * 2][0][0][0];
-            mv[1]      = fme_input.mv_8x8[blk32x32][blk * 2][0][0][1];
+            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][0];
+            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][1];
             cur_pos[0] = 32 * (blk32x32 % 2);
             cur_pos[1] = 32 * (blk32x32 / 2) + 16 * blk;
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -301,8 +315,8 @@ void FME::fme32x32cost(int blk32x32, int splitmode)
     case SIZE_Nx2N: {
         cu_skip[1 + blk32x32] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk32x32][blk][0][0][0];
-            mv[1]      = fme_input.mv_8x8[blk32x32][blk][0][0][1];
+            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][0];
+            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][1];
             cur_pos[0] = 32 * (blk32x32 % 2) + 16 * blk;
             cur_pos[1] = 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -337,8 +351,8 @@ void FME::fme16x16cost(int blk32x32, int blk16x16, int splitmode)
     switch (splitmode) {
     case SIZE_2Nx2N: {
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
-        mv[0]                                = fme_input.mv_8x8[blk32x32][blk16x16][0][0][0];
-        mv[1]                                = fme_input.mv_8x8[blk32x32][blk16x16][0][0][1];
+        mv[0]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0];
+        mv[1]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1];
         cur_pos[0]                           = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
         cur_pos[1]                           = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
         ref_pos[0]                           = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -360,8 +374,8 @@ void FME::fme16x16cost(int blk32x32, int blk16x16, int splitmode)
     case SIZE_2NxN: {
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk * 2][0][0];
-            mv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk * 2][0][1];
+            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0];
+            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1];
             cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 8 * blk + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -384,8 +398,8 @@ void FME::fme16x16cost(int blk32x32, int blk16x16, int splitmode)
     case SIZE_Nx2N: {
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk][0][0];
-            mv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk][0][1];
+            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0];
+            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1];
             cur_pos[0] = 8 * blk + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -418,8 +432,8 @@ void FME::fme8x8cost(int blk32x32, int blk16x16, int blk8x8)
 {
     int min_index;
     cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] = 0;
-    mv[0]                                               = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][0][0];
-    mv[1]                                               = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][0][1];
+    mv[0]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0];
+    mv[1]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1];
     cur_pos[0]                                          = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
     cur_pos[1]                                          = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
     ref_pos[0]                                          = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -607,8 +621,8 @@ void FME::fmectu()
             mv[1] = mv_store[2 / 2 * 4 + 2 / 2 * 2 + 2 / 2][7][1][1]; // merge idx=0 2%2*4+2%2*2+2%2-1
         } else {
             cu_skip[0] = 0;
-            mv[0]      = fme_input.mv_8x8[0][0][0][0][0];
-            mv[1]      = fme_input.mv_8x8[0][0][0][0][1];
+            mv[0]      = fme_input.mv_64x64_tmp[0][0][0];
+            mv[1]      = fme_input.mv_64x64_tmp[0][0][1];
         }
         cur_pos[0] = 0; // current pu position
         cur_pos[1] = 0;
@@ -653,8 +667,8 @@ void FME::fmectu()
     case SIZE_2NxN:
         cu_skip[0] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk * 2][0][0][0][0];
-            mv[1]      = fme_input.mv_8x8[blk * 2][0][0][0][1];
+            mv[0]      = fme_input.mv_64x64_tmp[2][blk][0];
+            mv[1]      = fme_input.mv_64x64_tmp[2][blk][1];
             cur_pos[0] = 0;
             cur_pos[1] = 32 * blk;
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -688,8 +702,8 @@ void FME::fmectu()
     case SIZE_Nx2N:
         cu_skip[0] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk][0][0][0][0];
-            mv[1]      = fme_input.mv_8x8[blk][0][0][0][1];
+            mv[0]      = fme_input.mv_64x64_tmp[1][blk][0];
+            mv[1]      = fme_input.mv_64x64_tmp[1][blk][1];
             cur_pos[0] = 32 * blk;
             cur_pos[1] = 0;
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -740,8 +754,8 @@ int32_t FME::fme32x32(int blk32x32)
             mv[1] = (blk32x32 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + 2 / 2 * 2 + 2 / 2][7][1][1] : mv_store[blk32x32 / 2 * 4 + 2 / 2 * 2 + 2 / 2][blk32x32 % 2 * 4 + 2 % 2 * 2 + 2 % 2 - 1][1][1]; //merge idx=0
         } else {
             cu_skip[1 + blk32x32] = 0;
-            mv[0]                 = fme_input.mv_8x8[blk32x32][0][0][0][0];
-            mv[1]                 = fme_input.mv_8x8[blk32x32][0][0][0][1];
+            mv[0]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][0];
+            mv[1]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][1];
         }
         cur_pos[0] = 32 * (blk32x32 % 2); // current pu position
         cur_pos[1] = 32 * (blk32x32 / 2);
@@ -785,8 +799,8 @@ int32_t FME::fme32x32(int blk32x32)
     case SIZE_2NxN:
         cu_skip[1 + blk32x32] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk32x32][blk * 2][0][0][0];
-            mv[1]      = fme_input.mv_8x8[blk32x32][blk * 2][0][0][1];
+            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][0];
+            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][1];
             cur_pos[0] = 32 * (blk32x32 % 2);
             cur_pos[1] = 32 * (blk32x32 / 2) + 16 * blk;
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -819,8 +833,8 @@ int32_t FME::fme32x32(int blk32x32)
     case SIZE_Nx2N:
         cu_skip[1 + blk32x32] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk32x32][blk][0][0][0];
-            mv[1]      = fme_input.mv_8x8[blk32x32][blk][0][0][1];
+            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][0];
+            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][1];
             cur_pos[0] = 32 * (blk32x32 % 2) + 16 * blk;
             cur_pos[1] = 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -871,8 +885,8 @@ int32_t FME::fme16x16(int blk32x32, int blk16x16)
             mv[1] = (blk32x32 % 2 == 0 && blk16x16 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + 2 / 2][7][1][1] : mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + 2 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + 2 % 2 - 1][1][1]; //merge idx=0
         } else {
             cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
-            mv[0]                                = fme_input.mv_8x8[blk32x32][blk16x16][0][0][0];
-            mv[1]                                = fme_input.mv_8x8[blk32x32][blk16x16][0][0][1];
+            mv[0]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0];
+            mv[1]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1];
         }
         cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
         cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
@@ -915,8 +929,8 @@ int32_t FME::fme16x16(int blk32x32, int blk16x16)
     case SIZE_2NxN:
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk * 2][0][0];
-            mv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk * 2][0][1];
+            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0];
+            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1];
             cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 8 * blk + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -948,8 +962,8 @@ int32_t FME::fme16x16(int blk32x32, int blk16x16)
     case SIZE_Nx2N:
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk][0][0];
-            mv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk][0][1];
+            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0];
+            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1];
             cur_pos[0] = 8 * blk + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -1000,8 +1014,8 @@ int32_t FME::fme8x8(int blk32x32, int blk16x16, int blk8x8)
             mv[1] = (blk32x32 % 2 == 0 && blk16x16 % 2 == 0 && blk8x8 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][7][1][1] : mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2 - 1][1][1]; //merge idx=0
         } else {
             cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] = 0;
-            mv[0]                                               = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][0][0];
-            mv[1]                                               = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][0][1];
+            mv[0]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0];
+            mv[1]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1];
         }
         cur_pos[0] = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
         cur_pos[1] = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
