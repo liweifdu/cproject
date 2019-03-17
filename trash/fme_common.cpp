@@ -88,7 +88,7 @@ void FME::fmeloadx265()
 	int part_y;
 	int safe_temp = 0;
 	FILE *fp = fopen("BasketballPass_22_interFullMV.log", "rb");
-	for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
+	/*for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
 		part_x = 32 * (blk32x32 % 2);
 		part_y = 32 * (blk32x32 / 2);
 		if ((is_x_Boundry && ((part_x + 31) > x_Boundry)) || (is_y_Boundry && ((part_y + 31) > y_Boundry)))
@@ -98,6 +98,7 @@ void FME::fmeloadx265()
 			part_y = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
 			if ((is_x_Boundry && ((part_x + 15) > x_Boundry)) || (is_y_Boundry && ((part_y + 15) > y_Boundry)))
 				continue;
+			//8x8
 			for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) {
 				for (int index = 0; index < 3; index++) {
 					for (int half = 0; half < 2; half++) {
@@ -108,6 +109,7 @@ void FME::fmeloadx265()
 					}
 				}
 			}
+			//16x16
 			for (int index = 0; index < 3; index++) {
 				for (int half = 0; half < 2; half++) {
 					fscanf(fp, "%x", &safe_temp);
@@ -117,6 +119,7 @@ void FME::fmeloadx265()
 				}
 			}
 		}
+		//32x32
 		for (int index = 0; index < 3; index++) {
 			for (int half = 0; half < 2; half++) {
 				fscanf(fp, "%x", &safe_temp);
@@ -126,11 +129,70 @@ void FME::fmeloadx265()
 			}
 		}
 	}
+	//64x64
 	for (int index = 0; index < 3; index++) {
 		for (int half = 0; half < 2; half++) {
 			fme_input.mv_64x64_tmp[index][half][0] = 0;
 			fme_input.mv_64x64_tmp[index][half][1] = 0;
 		}
+	}*/
+	int blk32x32, blk16x16, blk8x8;
+	for (int i = 0; i < 1000; i++) {
+		fscanf(fp, "%d", &safe_temp);
+		if (safe_temp > 20) {
+			blk32x32 = (safe_temp - 21) / 16;
+			blk16x16 = ((safe_temp - 21) / 4) % 4;
+			blk8x8 = (safe_temp - 21) % 4;
+			fscanf(fp, "%x", &safe_temp);
+			for (int index = 0; index < 3; index++) 
+				for (int half = 0; half < 2; half++)
+					fme_input.mv_32x32_tmp[blk32x32][index][half][0] = safe_temp;
+			fscanf(fp, "%x", &safe_temp);
+			for (int index = 0; index < 3; index++)
+				for (int half = 0; half < 2; half++)
+					fme_input.mv_32x32_tmp[blk32x32][index][half][1] = safe_temp;
+
+		}
+		else if (safe_temp > 4) {
+			blk32x32 = (safe_temp - 5) / 4;
+			blk16x16 = (safe_temp - 5) % 4;
+			fscanf(fp, "%x", &safe_temp);
+			for (int index = 0; index < 3; index++)
+				for (int half = 0; half < 2; half++)
+					fme_input.mv_16x16_tmp[blk32x32][blk16x16][index][half][0] = safe_temp;
+			fscanf(fp, "%x", &safe_temp);
+			for (int index = 0; index < 3; index++)
+				for (int half = 0; half < 2; half++)
+					fme_input.mv_16x16_tmp[blk32x32][blk16x16][index][half][1] = safe_temp;
+			
+		}
+		else if (safe_temp > 0) {
+			blk32x32 = safe_temp - 1;
+			fscanf(fp, "%x", &safe_temp);
+			for (int index = 0; index < 3; index++)
+				for (int half = 0; half < 2; half++)
+					fme_input.mv_32x32_tmp[blk32x32][index][half][0] = safe_temp;
+			fscanf(fp, "%x", &safe_temp);
+			for (int index = 0; index < 3; index++)
+				for (int half = 0; half < 2; half++)
+					fme_input.mv_32x32_tmp[blk32x32][index][half][1] = safe_temp;
+
+		}
+		else
+		{
+			fscanf(fp, "%x", &safe_temp);
+			for (int index = 0; index < 3; index++)
+				for (int half = 0; half < 2; half++)
+					fme_input.mv_64x64_tmp[index][half][0] = 0;
+			fscanf(fp, "%x", &safe_temp);
+			for (int index = 0; index < 3; index++)
+				for (int half = 0; half < 2; half++)
+					fme_input.mv_64x64_tmp[index][half][0] = 0;
+		}
+
+		//end of the ctu
+		if (safe_temp == 4)
+			break;
 	}
 }
 
