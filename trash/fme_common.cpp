@@ -83,26 +83,40 @@ void FME::fmeloadx265()
 	for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
 		for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
 			for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) {
-				fscanf(fp, "%x", &safe_temp);
-				fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][0][0] = safe_temp;
-				fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][1][0] = safe_temp;
-				fscanf(fp, "%x", &safe_temp);
-				fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][0][1] = safe_temp;
-				fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][1][1] = safe_temp;
+				for (int index = 0; index < 3; index++) {
+					for (int half = 0; half < 2; half++) {
+						fscanf(fp, "%x", &safe_temp);
+						fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][index][half][0] = safe_temp;
+						fscanf(fp, "%x", &safe_temp);
+						fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][index][half][1] = safe_temp;
+					}
+				}
 			}
 			for (int index = 0; index < 3; index++) {
-				fscanf(fp, "%x", &safe_temp);
-				fme_input.mv_16x16[blk32x32][blk16x16][index] = safe_temp;
+				for (int half = 0; half < 2; half++) {
+					fscanf(fp, "%x", &safe_temp);
+					fme_input.mv_16x16_tmp[blk32x32][blk16x16][index][half][0] = safe_temp;
+					fscanf(fp, "%x", &safe_temp);
+					fme_input.mv_16x16_tmp[blk32x32][blk16x16][index][half][1] = safe_temp;
+				}
 			}
 		}
 		for (int index = 0; index < 3; index++) {
-			fscanf(fp, "%x", &safe_temp);
-			fme_input.mv_32x32[blk32x32][index] = safe_temp;
+			for (int half = 0; half < 2; half++) {
+				fscanf(fp, "%x", &safe_temp);
+				fme_input.mv_32x32_tmp[blk32x32][index][half][0] = safe_temp;
+				fscanf(fp, "%x", &safe_temp);
+				fme_input.mv_32x32_tmp[blk32x32][index][half][1] = safe_temp;
+			}
 		}
 	}
 	for (int index = 0; index < 3; index++) {
-		fscanf(fp, "%x", &safe_temp);
-		fme_input.mv_64x64[index] = safe_temp;
+		for (int half = 0; half < 2; half++) {
+			fscanf(fp, "%x", &safe_temp);
+			fme_input.mv_64x64_tmp[index][half][0] = safe_temp;
+			fscanf(fp, "%x", &safe_temp);
+			fme_input.mv_64x64_tmp[index][half][1] = safe_temp;
+		}
 	}
 }
 
