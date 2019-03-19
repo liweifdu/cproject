@@ -51,7 +51,7 @@ void FME::fme64x64()
     memcpy(fme_output.fmv_8x8, fme_input.mv_8x8, sizeof(fme_input.mv_8x8));
 
 	//initial cost
-    cost64x64_2Nx2N = 0, cost64x64_Nx2N = 0, cost64x64_2NxN = 0;
+    cost64x64_2Nx2N = 0, cost64x64_Nx2N = 0, cost64x64_2NxN = 0, cost64x64_min = 0;
     memset(cost32x32_2Nx2N, 0, sizeof(cost32x32_2Nx2N));
     memset(cost32x32_2NxN, 0, sizeof(cost32x32_2NxN));
     memset(cost32x32_Nx2N, 0, sizeof(cost32x32_Nx2N));
@@ -59,6 +59,9 @@ void FME::fme64x64()
     memset(cost16x16_2NxN, 0, sizeof(cost16x16_2NxN));
     memset(cost16x16_Nx2N, 0, sizeof(cost16x16_Nx2N));
     memset(cost8x8_2Nx2N, 0, sizeof(cost8x8_2Nx2N));
+	memset(cost8x8_min, 0, sizeof(cost8x8_min));
+	memset(cost16x16_min, 0, sizeof(cost16x16_min));
+	memset(cost32x32_min, 0, sizeof(cost32x32_min));
 
 	//initial mv
 	memset(fme_input.mv_8x8_tmp, 0, sizeof(fme_input.mv_8x8_tmp));
@@ -76,7 +79,7 @@ void FME::fme64x64()
     fmepartition();
 
     //dump cost
-    dumpcost();
+    //dumpcost();
 
     //do fme
     fmectu();
@@ -230,12 +233,15 @@ void FME::dumpcost()
 uint32_t FME::calcRDSADCost(int pos_x, int pos_y, int len_x, int len_y, int16_t mv[2], int min_index)
 {
     uint32_t satd       = 0;
+	uint32_t sad        = 0;
     uint32_t distortion = COST_MAX;
     for (int blk8x8_y = 0; blk8x8_y < len_y; blk8x8_y += 8)
         for (int blk8x8_x = 0; blk8x8_x < len_x; blk8x8_x += 8) {
-            satd += sub_hadmard_satd_8x8(&cur_mb.luma[pos_y + blk8x8_y][pos_x + blk8x8_x], &ref_mb[min_index][blk8x8_y][blk8x8_x]);
+			sad += pixel_subsad_WxH(&cur_mb.luma[pos_y + blk8x8_y][pos_x + blk8x8_x], f_LCU_SIZE, &ref_mb[min_index][blk8x8_y][blk8x8_x], f_LCU_SIZE, 8, 8);
+            //satd += sub_hadmard_satd_8x8(&cur_mb.luma[pos_y + blk8x8_y][pos_x + blk8x8_x], &ref_mb[min_index][blk8x8_y][blk8x8_x]);
         }
-    distortion = satd + (lambda_tab[fme_input.qp] * (getBits(abs(mv[0])) + getBits(abs(mv[1]))));
+    //distortion = satd + (lambda_tab[fme_input.qp] * (getBits(abs(mv[0])) + getBits(abs(mv[1]))));
+	distortion = sad;
     return distortion;
 }
 
@@ -1753,6 +1759,20 @@ int FME::x265_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk) {
     sum = (((int)sum + 2) >> 2);
 
     return (int)sum;
+}
+
+uint32_t FME::pixel_subsad_WxH(PIXEL *pix1, int i_stride_pix1,
+	PIXEL *pix2, int i_stride_pix2,
+	int w, int h)
+{
+	int i_sum = 0;
+	int x, y;
+	for (y = 0; y < h; y += 2) {
+		for (x = 0; x < w; x += 2) {
+			i_sum += abs(*(pix1 + y * i_stride_pix1 + x) - *(pix2 + y * i_stride_pix2 + x));
+		}
+	}
+	return i_sum;
 }
 
 uint32_t FME::sub_hadmard_satd(PIXEL *cur_4x4blk, PIXEL *ref_4x4blk)

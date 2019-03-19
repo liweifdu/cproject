@@ -197,6 +197,11 @@ private:
     uint32_t sub_hadmard_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk);
     int x265_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk);
 
+	//SAD calculation
+	uint32_t FME::pixel_subsad_WxH(PIXEL *pix1, int i_stride_pix1,
+		PIXEL *pix2, int i_stride_pix2,
+		int w, int h);
+
     //------ fme common function ------//
     // interpolation func
     void interpolate_h(int pos_x, int pos_y, int len_x, int len_y);
