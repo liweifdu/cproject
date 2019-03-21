@@ -82,16 +82,356 @@ void FME::fme64x64()
     //dumpcost();
 
     //do fme
-    fmectu();
+    //fmectu();
+
+	//update fme
+	fmeupdate();
 }
+
+void FME::fmeupdate()
+{
+
+	int min_index;
+		switch (fme_input.cu_64x64_mode) {
+		case SIZE_2Nx2N: {
+			cu_skip[0] = 0;
+			mv[0] = fme_input.mv_64x64_tmp[0][0][0] & 0xfffc;
+			mv[1] = fme_input.mv_64x64_tmp[0][0][1] & 0xfffc;
+			cur_pos[0] = 0; // current pu position
+			cur_pos[1] = 0;
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 64, 64);
+			dmv[0] = fme_input.mv_64x64_tmp[0][0][0] & 0x0002; // new mv
+			dmv[1] = fme_input.mv_64x64_tmp[0][0][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 64, 64, dmv);
+			dmv[0] = fme_input.mv_64x64_tmp[0][0][0] & 0x0001; // new mv
+			dmv[1] = fme_input.mv_64x64_tmp[0][0][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			pixel_copy_WxH(64, 64, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+			// update fmv
+			for (int blk32x32 = 0; blk32x32 < 4; blk32x32++)
+				for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
+					for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+						for (int i = 0; i < 2; i++)
+							for (int k = 0; k < 2; k++) {
+								fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k] = fme_input.mv_64x64_tmp[0][0][k];
+								mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_64x64_tmp[0][0][k];
+								fmecost[blk32x32][blk16x16][blk8x8][i] = cost64x64_2Nx2N;
+							}
+		} break;
+		case SIZE_2NxN: {
+			cu_skip[0] = 0;
+			for (int blk = 0; blk < 2; blk++) {
+				mv[0] = fme_input.mv_64x64_tmp[2][blk][0] & 0xfffc;
+				mv[1] = fme_input.mv_64x64_tmp[2][blk][1] & 0xfffc;
+				cur_pos[0] = 0;
+				cur_pos[1] = 32 * blk;
+				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+				// half me
+				interpolate_h(ref_pos[0], ref_pos[1], 64, 32);
+				dmv[0] = fme_input.mv_64x64_tmp[2][blk][0] & 0x0002; // new mv
+				dmv[1] = fme_input.mv_64x64_tmp[2][blk][1] & 0x0002;
+				// quart me
+				interpolate_q(ref_pos[0], ref_pos[1], 64, 32, dmv);
+				dmv[0] = fme_input.mv_64x64_tmp[2][blk][0] & 0x0001; // new mv
+				dmv[1] = fme_input.mv_64x64_tmp[2][blk][1] & 0x0001;
+				min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+				pixel_copy_WxH(32, 64, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+				// update fmv
+				for (int blk32x32 = 0; blk32x32 < 2; blk32x32++)
+					for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
+						for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+							for (int i = 0; i < 2; i++)
+								for (int k = 0; k < 2; k++) {
+									fme_output.fmv_8x8[blk32x32 + blk * 2][blk16x16][blk8x8][i][k] = fme_input.mv_64x64_tmp[2][blk][k];
+									mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_64x64_tmp[2][blk][k];
+									fmecost[blk32x32 + blk * 2][blk16x16][blk8x8][i] = cost64x64_2NxN;
+								}
+			}
+		} break;
+		case SIZE_Nx2N: {
+			cu_skip[0] = 0;
+			for (int blk = 0; blk < 2; blk++) {
+				mv[0] = fme_input.mv_64x64_tmp[1][blk][0] & 0xfffc;
+				mv[1] = fme_input.mv_64x64_tmp[1][blk][1] & 0xfffc;
+				cur_pos[0] = 32 * blk;
+				cur_pos[1] = 0;
+				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+				// half me
+				interpolate_h(ref_pos[0], ref_pos[1], 32, 64);
+				dmv[0] = fme_input.mv_64x64_tmp[1][blk][0] & 0x0002;
+				dmv[1] = fme_input.mv_64x64_tmp[1][blk][1] & 0x0002;
+				// quart me
+				interpolate_q(ref_pos[0], ref_pos[1], 32, 64, dmv);
+				dmv[0] = fme_input.mv_64x64_tmp[1][blk][0] & 0x0001;
+				dmv[1] = fme_input.mv_64x64_tmp[1][blk][1] & 0x0001;
+				min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+				pixel_copy_WxH(64, 32, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+				// update fmv
+				for (int blk32x32 = 0; blk32x32 < 2; blk32x32++)
+					for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
+						for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+							for (int i = 0; i < 2; i++)
+								for (int k = 0; k < 2; k++) {
+									fme_output.fmv_8x8[blk32x32 * 2 + blk][blk16x16][blk8x8][i][k] = fme_input.mv_64x64_tmp[1][blk][k];
+									mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_64x64_tmp[1][blk][k];
+									fmecost[blk32x32 * 2 + blk][blk16x16][blk8x8][i] = cost64x64_Nx2N;
+								}
+			}
+		} break;
+		case SPLIT:
+			for (int blk = 0; blk < 4; blk++) {
+				fme32x32update(blk);
+			}
+			break;
+		}
+	}
+
+void FME::fme32x32update(int blk32x32)
+{
+	int min_index;
+	switch (fme_input.cu_32x32_mode[blk32x32]) {
+	case SIZE_2Nx2N: {
+		cu_skip[1 + blk32x32] = 0;
+		mv[0] = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0xfffc;
+		mv[1] = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0xfffc;
+		cur_pos[0] = 32 * (blk32x32 % 2); // current pu position
+		cur_pos[1] = 32 * (blk32x32 / 2);
+		ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+		ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+		// half me
+		interpolate_h(ref_pos[0], ref_pos[1], 32, 32);
+		dmv[0] = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0x0002; // new mv
+		dmv[1] = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0x0002;
+		// quart me
+		interpolate_q(ref_pos[0], ref_pos[1], 32, 32, dmv);
+		dmv[0] = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0x0001; // new mv
+		dmv[1] = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0x0001;
+		min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+		pixel_copy_WxH(32, 32, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+		// update fmv
+		for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
+			for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+				for (int i = 0; i < 2; i++)
+					for (int k = 0; k < 2; k++) {
+						fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k] = fme_input.mv_32x32_tmp[blk32x32][0][0][k];
+						mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_32x32_tmp[blk32x32][0][0][k];
+						fmecost[blk32x32][blk16x16][blk8x8][i] = cost32x32_2Nx2N[blk32x32];
+					}
+	} break;
+	case SIZE_2NxN: {
+		cu_skip[1 + blk32x32] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0xfffc;
+			cur_pos[0] = 32 * (blk32x32 % 2);
+			cur_pos[1] = 32 * (blk32x32 / 2) + 16 * blk;
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 32, 16);
+			dmv[0] = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 32, 16, dmv);
+			dmv[0] = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			pixel_copy_WxH(16, 32, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+			// update fmv
+			for (int blk16x16 = 0; blk16x16 < 2; blk16x16++)
+				for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+					for (int i = 0; i < 2; i++)
+						for (int k = 0; k < 2; k++) {
+							fme_output.fmv_8x8[blk32x32][blk16x16 + blk * 2][blk8x8][i][k] = mv[k];
+							mv_store[blk32x32 / 2 * 4 + (blk * 2 + blk16x16) / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + (blk * 2 + blk16x16) % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
+							fmecost[blk32x32][blk16x16 + blk * 2][blk8x8][i] = cost32x32_2NxN[blk32x32];
+						}
+		}
+	} break;
+	case SIZE_Nx2N: {
+		cu_skip[1 + blk32x32] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0xfffc;
+			cur_pos[0] = 32 * (blk32x32 % 2) + 16 * blk;
+			cur_pos[1] = 32 * (blk32x32 / 2);
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 16, 32);
+			dmv[0] = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 16, 32, dmv);
+			dmv[0] = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			pixel_copy_WxH(32, 16, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+			// update fmv
+			for (int blk16x16 = 0; blk16x16 < 2; blk16x16++)
+				for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+					for (int i = 0; i < 2; i++)
+						for (int k = 0; k < 2; k++) {
+							fme_output.fmv_8x8[blk32x32][blk16x16 * 2 + blk][blk8x8][i][k] = fme_input.mv_32x32_tmp[blk32x32][1][blk][k];
+							mv_store[blk32x32 / 2 * 4 + (blk16x16 * 2 + blk) / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + (blk16x16 * 2 + blk) % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_32x32_tmp[blk32x32][1][blk][k];
+							fmecost[blk32x32][blk16x16 * 2 + blk][blk8x8][i] = cost32x32_Nx2N[blk32x32];
+						}
+		}
+	} break;
+	case SPLIT:
+		for (int blk = 0; blk < 4; blk++) {
+				fme16x16update(blk32x32, blk);
+		}
+		break;
+	}
+}
+
+void FME::fme16x16update(int blk32x32, int blk16x16)
+{
+	int min_index = 0;
+	switch (fme_input.cu_16x16_mode[blk32x32][blk16x16]) {
+	case SIZE_2Nx2N: {
+		cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
+		mv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0xfffc;
+		mv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0xfffc;
+		cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
+		cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+		ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+		ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+		// half me
+		interpolate_h(ref_pos[0], ref_pos[1], 16, 16);
+		dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0x0002; // new mv
+		dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0x0002;
+		// quart me
+		interpolate_q(ref_pos[0], ref_pos[1], 16, 16, dmv);
+		dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0x0001; // new mv
+		dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0x0001;
+		min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+		pixel_copy_WxH(16, 16, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+		// update fmv
+		for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+			for (int i = 0; i < 2; i++)
+				for (int k = 0; k < 2; k++) {
+					fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][k];
+					mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][k];
+					fmecost[blk32x32][blk16x16][blk8x8][i] = cost16x16_2Nx2N[blk32x32][blk16x16];
+				}
+	} break;
+	case SIZE_2NxN: {
+		cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0xfffc;
+			cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
+			cur_pos[1] = 8 * blk + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 16, 8);
+			dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 16, 8, dmv);
+			dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			pixel_copy_WxH(8, 16, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+			// update fmv
+			for (int blk8x8 = 0; blk8x8 < 2; blk8x8++)
+				for (int i = 0; i < 2; i++)
+					for (int k = 0; k < 2; k++) {
+						fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 + blk * 2][i][k] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][k];
+						mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + (blk8x8 + blk * 2) / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + (blk8x8 + blk * 2) % 2][i][k] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][k];
+						fmecost[blk32x32][blk16x16][blk8x8 + blk * 2][i] = cost16x16_2NxN[blk32x32][blk16x16];
+					}
+		}
+	} break;
+	case SIZE_Nx2N: {
+		cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0xfffc;
+			cur_pos[0] = 8 * blk + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
+			cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 8, 16);
+			dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 8, 16, dmv);
+			//cost16x16 += subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
+			dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0x0001;
+			pixel_copy_WxH(16, 8, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+			// update fmv
+			for (int blk8x8 = 0; blk8x8 < 2; blk8x8++)
+				for (int i = 0; i < 2; i++)
+					for (int k = 0; k < 2; k++) {
+						fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 * 2 + blk][i][k] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][k];
+						mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + (blk8x8 * 2 + blk) / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + (blk8x8 * 2 + blk) % 2][i][k] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][k];
+						fmecost[blk32x32][blk16x16][blk8x8 * 2 + blk][i] = cost16x16_Nx2N[blk32x32][blk16x16];
+					}
+		}
+	} break;
+	case SPLIT:
+		for (int blk = 0; blk < 4; blk++) {
+			fme8x8update(blk32x32, blk16x16, blk);
+		}
+		break;
+	}
+}
+
+void FME::fme8x8update(int blk32x32, int blk16x16, int blk8x8)
+{
+	int min_index;
+	cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] = 0;
+	mv[0] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0xfffc;
+	mv[1] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0xfffc;
+	cur_pos[0] = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
+	cur_pos[1] = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+	ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+	ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+	// half me
+	interpolate_h(ref_pos[0], ref_pos[1], 8, 8);
+	dmv[0] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0x0002; // new mv
+	dmv[1] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0x0002;
+	// quart me
+	interpolate_q(ref_pos[0], ref_pos[1], 8, 8, dmv);
+	dmv[0] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0x0001; // new mv
+	dmv[1] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0x0001;
+	min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+	pixel_copy_WxH(8, 8, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+	// update fmv
+	for (int i = 0; i < 2; i++)
+		for (int k = 0; k < 2; k++) {
+			fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][k];
+			mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][k];
+			fmecost[blk32x32][blk16x16][blk8x8][i] = cost8x8_2Nx2N[blk32x32][blk16x16][blk8x8];
+		}
+}
+
+
 
 void FME::fmeloadx265()
 {
+	int safe_temp = 0;
+	char postfix1[] = "_interFullMV.log";
+	char* fileName1 = new char[100];
+	strcpy(fileName1, (char*)param.dump_prefix.data());
+	fileName1 = strcat(fileName1, postfix1);
+	static FILE *fp = fopen(fileName1, "rb");
+	/*
 	int part_x;
 	int part_y;
-	int safe_temp = 0;
-	FILE *fp = fopen("BasketballPass_22_interFullMV.log", "rb");
-	/*for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
+	for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
 		part_x = 32 * (blk32x32 % 2);
 		part_y = 32 * (blk32x32 / 2);
 		if ((is_x_Boundry && ((part_x + 31) > x_Boundry)) || (is_y_Boundry && ((part_y + 31) > y_Boundry)))
@@ -140,9 +480,15 @@ void FME::fmeloadx265()
 		}
 	}*/
 	int blk32x32, blk16x16, blk8x8;
-	for (int i = 0; i < 1000; i++) {
+	for (int i = 0; i < 84; i++) {
+		blk32x32 = i / 21;
+		blk16x16 = (i - blk32x32 * 21) == 20 ? 3 : ((i - blk32x32 * 21) / 5);
+		blk8x8 = (i - blk32x32 * 21) == 20 ? 3 : ((i - blk32x32 * 21) % 5 == 4 ? 3 : ((i - blk32x32 * 21) % 5));
+		int x = (blk32x32 % 2) * 32 + (blk16x16 % 2) * 16 + (blk8x8 % 2) * 8 + 8;
+		int y = (blk32x32 / 2) * 32 + (blk16x16 / 2) * 16 + (blk8x8 / 2) * 8 + 8;
+		if ((is_x_Boundry && (x > x_Boundry)) || (is_y_Boundry && (y > y_Boundry)))
+			continue;
 		fscanf(fp, "%d", &safe_temp);
-		bool end_flag = (safe_temp == 4 ? true : false);
 		if (safe_temp > 20) {
 			blk32x32 = (safe_temp - 21) / 16;
 			blk16x16 = ((safe_temp - 21) / 4) % 4;
@@ -193,10 +539,6 @@ void FME::fmeloadx265()
 				for (int half = 0; half < 2; half++)
 					fme_input.mv_64x64_tmp[index][half][0] = 0;
 		}
-
-		//end of the ctu
-		if (end_flag)
-			break;
 	}
 }
 
@@ -237,11 +579,11 @@ uint32_t FME::calcRDSADCost(int pos_x, int pos_y, int len_x, int len_y, int16_t 
     uint32_t distortion = COST_MAX;
     for (int blk8x8_y = 0; blk8x8_y < len_y; blk8x8_y += 8)
         for (int blk8x8_x = 0; blk8x8_x < len_x; blk8x8_x += 8) {
-			sad += pixel_subsad_WxH(&cur_mb.luma[pos_y + blk8x8_y][pos_x + blk8x8_x], f_LCU_SIZE, &ref_mb[min_index][blk8x8_y][blk8x8_x], f_LCU_SIZE, 8, 8);
-            //satd += sub_hadmard_satd_8x8(&cur_mb.luma[pos_y + blk8x8_y][pos_x + blk8x8_x], &ref_mb[min_index][blk8x8_y][blk8x8_x]);
+			//sad += pixel_subsad_WxH(&cur_mb.luma[pos_y + blk8x8_y][pos_x + blk8x8_x], f_LCU_SIZE, &ref_mb[min_index][blk8x8_y][blk8x8_x], f_LCU_SIZE, 8, 8);
+            satd += sub_hadmard_satd_8x8(&cur_mb.luma[pos_y + blk8x8_y][pos_x + blk8x8_x], &ref_mb[min_index][blk8x8_y][blk8x8_x]);
         }
-    //distortion = satd + (lambda_tab[fme_input.qp] * (getBits(abs(mv[0])) + getBits(abs(mv[1]))));
-	distortion = sad;
+    distortion = satd + (lambda_tab[fme_input.qp] * (getBits(abs(mv[0])) + getBits(abs(mv[1]))));
+	//distortion = satd;
     return distortion;
 }
 
@@ -253,71 +595,65 @@ void FME::fme64x64cost()
         switch (splitmode) {
         case SIZE_2Nx2N: {
             cu_skip[0] = 0;
-            mv[0]      = fme_input.mv_64x64_tmp[0][0][0];
-            mv[1]      = fme_input.mv_64x64_tmp[0][0][1];
+            mv[0]      = fme_input.mv_64x64_tmp[0][0][0] & 0xfffc;
+            mv[1]      = fme_input.mv_64x64_tmp[0][0][1] & 0xfffc;
             cur_pos[0] = 0; // current pu position
             cur_pos[1] = 0;
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
             ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
             // half me
             interpolate_h(ref_pos[0], ref_pos[1], 64, 64);
-            subpel_me(cur_pos[0], cur_pos[1], 64, 64, mv, dmv, 1);
-            mv[0] += dmv[0]; // new mv
-            mv[1] += dmv[1];
+            dmv[0] = fme_input.mv_64x64_tmp[0][0][0] & 0x0002; // new mv
+            dmv[1] = fme_input.mv_64x64_tmp[0][0][1] & 0x0002;
             // quart me
             interpolate_q(ref_pos[0], ref_pos[1], 64, 64, dmv);
-            subpel_me(cur_pos[0], cur_pos[1], 64, 64, mv, dmv, 0);
-            mv[0] += dmv[0]; // new mv
-            mv[1] += dmv[1];
+			dmv[0] = fme_input.mv_64x64_tmp[0][0][0] & 0x0001; // new mv
+			dmv[1] = fme_input.mv_64x64_tmp[0][0][1] & 0x0001;
             min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            uint32_t cost64x64 = calcRDSADCost(cur_pos[0], cur_pos[1], 64, 64, mv, min_index);
+            uint32_t cost64x64 = calcRDSADCost(cur_pos[0], cur_pos[1], 64, 64, fme_input.mv_64x64_tmp[0][0], min_index);
             cost64x64_2Nx2N    = cost64x64;
         } break;
         case SIZE_2NxN: {
             cu_skip[0] = 0;
             for (int blk = 0; blk < 2; blk++) {
-                mv[0]      = fme_input.mv_64x64_tmp[2][blk][0];
-                mv[1]      = fme_input.mv_64x64_tmp[2][blk][1];
+                mv[0]      = fme_input.mv_64x64_tmp[2][blk][0] & 0xfffc;
+                mv[1]      = fme_input.mv_64x64_tmp[2][blk][1] & 0xfffc;
                 cur_pos[0] = 0;
                 cur_pos[1] = 32 * blk;
                 ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
                 ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
                 // half me
                 interpolate_h(ref_pos[0], ref_pos[1], 64, 32);
-                subpel_me(cur_pos[0], cur_pos[1], 64, 32, mv, dmv, 1);
-                mv[0] += dmv[0];
-                mv[1] += dmv[1];
+				dmv[0] = fme_input.mv_64x64_tmp[2][blk][0] & 0x0002; // new mv
+				dmv[1] = fme_input.mv_64x64_tmp[2][blk][1] & 0x0002;
                 // quart me
                 interpolate_q(ref_pos[0], ref_pos[1], 64, 32, dmv);
-                subpel_me(cur_pos[0], cur_pos[1], 64, 32, mv, dmv, 0);
-                mv[0] += dmv[0];
-                mv[1] += dmv[1];
+				dmv[0] = fme_input.mv_64x64_tmp[2][blk][0] & 0x0001; // new mv
+				dmv[1] = fme_input.mv_64x64_tmp[2][blk][1] & 0x0001;
                 min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
-                uint32_t cost64x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 64, 32, mv, min_index);
+                uint32_t cost64x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 64, 32, fme_input.mv_64x64_tmp[2][blk], min_index);
                 cost64x64_2NxN += cost64x32;
             }
         } break;
         case SIZE_Nx2N: {
             cu_skip[0] = 0;
             for (int blk = 0; blk < 2; blk++) {
-                mv[0]      = fme_input.mv_64x64_tmp[1][blk][0];
-                mv[1]      = fme_input.mv_64x64_tmp[1][blk][1];
+                mv[0]      = fme_input.mv_64x64_tmp[1][blk][0] & 0xfffc;
+                mv[1]      = fme_input.mv_64x64_tmp[1][blk][1] & 0xfffc;
                 cur_pos[0] = 32 * blk;
                 cur_pos[1] = 0;
                 ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
                 ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
                 // half me
                 interpolate_h(ref_pos[0], ref_pos[1], 32, 64);
-                subpel_me(cur_pos[0], cur_pos[1], 32, 64, mv, dmv, 1);
-                mv[0] += dmv[0];
-                mv[1] += dmv[1];
+                dmv[0] = fme_input.mv_64x64_tmp[1][blk][0] & 0x0002;
+				dmv[1] = fme_input.mv_64x64_tmp[1][blk][1] & 0x0002;
                 // quart me
                 interpolate_q(ref_pos[0], ref_pos[1], 32, 64, dmv);
-                subpel_me(cur_pos[0], cur_pos[1], 32, 64, mv, dmv, 0);
-                mv[0] += dmv[0];
-                mv[1] += dmv[1];
+				dmv[0] = fme_input.mv_64x64_tmp[1][blk][0] & 0x0001;
+				dmv[1] = fme_input.mv_64x64_tmp[1][blk][1] & 0x0001;
                 min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
-                uint32_t cost32x64 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 64, mv, min_index);
+                uint32_t cost32x64 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 64, fme_input.mv_64x64_tmp[1][blk], min_index);
                 cost64x64_Nx2N += cost32x64;
             }
         } break;
@@ -337,71 +673,65 @@ void FME::fme32x32cost(int blk32x32, int splitmode)
     switch (splitmode) {
     case SIZE_2Nx2N: {
         cu_skip[1 + blk32x32] = 0;
-        mv[0]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][0];
-        mv[1]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][1];
+        mv[0]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0xfffc;
+        mv[1]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0xfffc;
         cur_pos[0]            = 32 * (blk32x32 % 2); // current pu position
         cur_pos[1]            = 32 * (blk32x32 / 2);
         ref_pos[0]            = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
         ref_pos[1]            = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
         // half me
         interpolate_h(ref_pos[0], ref_pos[1], 32, 32);
-        subpel_me(cur_pos[0], cur_pos[1], 32, 32, mv, dmv, 1);
-        mv[0] += dmv[0]; // new mv
-        mv[1] += dmv[1];
+        dmv[0] = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0x0002; // new mv
+		dmv[1] = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0x0002;
         // quart me
         interpolate_q(ref_pos[0], ref_pos[1], 32, 32, dmv);
-        subpel_me(cur_pos[0], cur_pos[1], 32, 32, mv, dmv, 0);
-        mv[0] += dmv[0]; // new mv
-        mv[1] += dmv[1];
+		dmv[0] = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0x0001; // new mv
+		dmv[1] = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0x0001;
         min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
-        uint32_t cost32x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 32, mv, min_index);
+        uint32_t cost32x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 32, fme_input.mv_32x32_tmp[blk32x32][0][0], min_index);
         cost32x32_2Nx2N[blk32x32] += cost32x32;
     } break;
     case SIZE_2NxN: {
         cu_skip[1 + blk32x32] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][0];
-            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][1];
+            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0xfffc;
+            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0xfffc;
             cur_pos[0] = 32 * (blk32x32 % 2);
             cur_pos[1] = 32 * (blk32x32 / 2) + 16 * blk;
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
             ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
             // half me
             interpolate_h(ref_pos[0], ref_pos[1], 32, 16);
-            subpel_me(cur_pos[0], cur_pos[1], 32, 16, mv, dmv, 1);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
+            dmv[0] = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0x0002;
             // quart me
             interpolate_q(ref_pos[0], ref_pos[1], 32, 16, dmv);
-            subpel_me(cur_pos[0], cur_pos[1], 32, 16, mv, dmv, 0);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
+			dmv[0] = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0x0001;
             min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            uint32_t cost32x16 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 16, mv, min_index);
+            uint32_t cost32x16 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 16, fme_input.mv_32x32_tmp[blk32x32][2][blk], min_index);
             cost32x32_2NxN[blk32x32] += cost32x16;
         }
     } break;
     case SIZE_Nx2N: {
         cu_skip[1 + blk32x32] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][0];
-            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][1];
+            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0xfffc;
+            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0xfffc;
             cur_pos[0] = 32 * (blk32x32 % 2) + 16 * blk;
             cur_pos[1] = 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
             ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
             // half me
             interpolate_h(ref_pos[0], ref_pos[1], 16, 32);
-            subpel_me(cur_pos[0], cur_pos[1], 16, 32, mv, dmv, 1);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
+            dmv[0] = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0x0002;
             // quart me
             interpolate_q(ref_pos[0], ref_pos[1], 16, 32, dmv);
-            subpel_me(cur_pos[0], cur_pos[1], 16, 32, mv, dmv, 0);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
+			dmv[0] = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0x0001;
             min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            uint32_t cost16x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 32, mv, min_index);
+            uint32_t cost16x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 32, fme_input.mv_32x32_tmp[blk32x32][1][blk], min_index);
             cost32x32_Nx2N[blk32x32] += cost16x32;
         }
     } break;
@@ -420,72 +750,66 @@ void FME::fme16x16cost(int blk32x32, int blk16x16, int splitmode)
     switch (splitmode) {
     case SIZE_2Nx2N: {
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
-        mv[0]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0];
-        mv[1]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1];
+        mv[0]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0xfffc;
+        mv[1]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0xfffc;
         cur_pos[0]                           = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
         cur_pos[1]                           = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
         ref_pos[0]                           = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
         ref_pos[1]                           = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
         // half me
         interpolate_h(ref_pos[0], ref_pos[1], 16, 16);
-        subpel_me(cur_pos[0], cur_pos[1], 16, 16, mv, dmv, 1);
-        mv[0] += dmv[0]; // new mv
-        mv[1] += dmv[1];
+        dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0x0002; // new mv
+		dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0x0002;
         // quart me
         interpolate_q(ref_pos[0], ref_pos[1], 16, 16, dmv);
-        subpel_me(cur_pos[0], cur_pos[1], 16, 16, mv, dmv, 0);
-        mv[0] += dmv[0]; // new mv
-        mv[1] += dmv[1];
+		dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0x0001; // new mv
+		dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0x0001;
         min_index                           = (dmv[1] + 1) * 3 + dmv[0] + 1;
-        uint32_t cost16x16                  = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 16, mv, min_index);
+        uint32_t cost16x16                  = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 16, fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0], min_index);
         cost16x16_2Nx2N[blk32x32][blk16x16] = cost16x16;
     } break;
     case SIZE_2NxN: {
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0];
-            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1];
+            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0xfffc;
+            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0xfffc;
             cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 8 * blk + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
             ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
             // half me
             interpolate_h(ref_pos[0], ref_pos[1], 16, 8);
-            subpel_me(cur_pos[0], cur_pos[1], 16, 8, mv, dmv, 1);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
+            dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0x0002;
             // quart me
             interpolate_q(ref_pos[0], ref_pos[1], 16, 8, dmv);
-            subpel_me(cur_pos[0], cur_pos[1], 16, 8, mv, dmv, 0);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
+			dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0x0001;
             min_index         = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            uint32_t cost16x8 = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 8, mv, min_index);
+            uint32_t cost16x8 = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 8, fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk], min_index);
             cost16x16_2NxN[blk32x32][blk16x16] += cost16x8;
         }
     } break;
     case SIZE_Nx2N: {
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0];
-            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1];
+            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0xfffc;
+            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0xfffc;
             cur_pos[0] = 8 * blk + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
             ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
             // half me
             interpolate_h(ref_pos[0], ref_pos[1], 8, 16);
-            subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 1);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
+            dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0x0002;
             // quart me
             interpolate_q(ref_pos[0], ref_pos[1], 8, 16, dmv);
             //cost16x16 += subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
-            subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
+			dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0x0001;
             min_index         = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            uint32_t cost8x16 = calcRDSADCost(cur_pos[0], cur_pos[1], 8, 16, mv, min_index);
+            uint32_t cost8x16 = calcRDSADCost(cur_pos[0], cur_pos[1], 8, 16, fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk], min_index);
             cost16x16_Nx2N[blk32x32][blk16x16] += cost8x16;
         }
     } break;
@@ -501,24 +825,22 @@ void FME::fme8x8cost(int blk32x32, int blk16x16, int blk8x8)
 {
     int min_index;
     cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] = 0;
-    mv[0]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0];
-    mv[1]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1];
+    mv[0]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0xfffc;
+    mv[1]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0xfffc;
     cur_pos[0]                                          = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
     cur_pos[1]                                          = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
     ref_pos[0]                                          = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
     ref_pos[1]                                          = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
     // half me
     interpolate_h(ref_pos[0], ref_pos[1], 8, 8);
-    subpel_me(cur_pos[0], cur_pos[1], 8, 8, mv, dmv, 1);
-    mv[0] += dmv[0]; // new mv
-    mv[1] += dmv[1];
+    dmv[0] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0x0002; // new mv
+	dmv[1] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0x0002;
     // quart me
     interpolate_q(ref_pos[0], ref_pos[1], 8, 8, dmv);
-    subpel_me(cur_pos[0], cur_pos[1], 8, 8, mv, dmv, 0);
-    mv[0] += dmv[0]; // new mv
-    mv[1] += dmv[1];
+	dmv[0] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0x0001; // new mv
+	dmv[1] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0x0001;
     min_index                                 = (dmv[1] + 1) * 3 + dmv[0] + 1;
-    uint32_t cost8x8                          = calcRDSADCost(cur_pos[0], cur_pos[1], 8, 8, mv, min_index);
+    uint32_t cost8x8                          = calcRDSADCost(cur_pos[0], cur_pos[1], 8, 8, fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0], min_index);
     cost8x8_2Nx2N[blk32x32][blk16x16][blk8x8] = cost8x8;
 }
 
@@ -690,8 +1012,8 @@ void FME::fmectu()
             mv[1] = mv_store[2 / 2 * 4 + 2 / 2 * 2 + 2 / 2][7][1][1]; // merge idx=0 2%2*4+2%2*2+2%2-1
         } else {
             cu_skip[0] = 0;
-            mv[0]      = fme_input.mv_64x64_tmp[0][0][0];
-            mv[1]      = fme_input.mv_64x64_tmp[0][0][1];
+            mv[0]      = fme_input.mv_64x64_tmp[0][0][0] & 0xfffc;
+            mv[1]      = fme_input.mv_64x64_tmp[0][0][1] & 0xfffc;
         }
         cur_pos[0] = 0; // current pu position
         cur_pos[1] = 0;
@@ -736,8 +1058,8 @@ void FME::fmectu()
     case SIZE_2NxN:
         cu_skip[0] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_64x64_tmp[2][blk][0];
-            mv[1]      = fme_input.mv_64x64_tmp[2][blk][1];
+            mv[0]      = fme_input.mv_64x64_tmp[2][blk][0] & 0xfffc;
+            mv[1]      = fme_input.mv_64x64_tmp[2][blk][1] & 0xfffc;
             cur_pos[0] = 0;
             cur_pos[1] = 32 * blk;
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -771,8 +1093,8 @@ void FME::fmectu()
     case SIZE_Nx2N:
         cu_skip[0] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_64x64_tmp[1][blk][0];
-            mv[1]      = fme_input.mv_64x64_tmp[1][blk][1];
+            mv[0]      = fme_input.mv_64x64_tmp[1][blk][0] & 0xfffc;
+            mv[1]      = fme_input.mv_64x64_tmp[1][blk][1] & 0xfffc;
             cur_pos[0] = 32 * blk;
             cur_pos[1] = 0;
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -823,8 +1145,8 @@ int32_t FME::fme32x32(int blk32x32)
             mv[1] = (blk32x32 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + 2 / 2 * 2 + 2 / 2][7][1][1] : mv_store[blk32x32 / 2 * 4 + 2 / 2 * 2 + 2 / 2][blk32x32 % 2 * 4 + 2 % 2 * 2 + 2 % 2 - 1][1][1]; //merge idx=0
         } else {
             cu_skip[1 + blk32x32] = 0;
-            mv[0]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][0];
-            mv[1]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][1];
+            mv[0]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0xfffc;
+            mv[1]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0xfffc;
         }
         cur_pos[0] = 32 * (blk32x32 % 2); // current pu position
         cur_pos[1] = 32 * (blk32x32 / 2);
@@ -868,8 +1190,8 @@ int32_t FME::fme32x32(int blk32x32)
     case SIZE_2NxN:
         cu_skip[1 + blk32x32] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][0];
-            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][1];
+            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0xfffc;
+            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0xfffc;
             cur_pos[0] = 32 * (blk32x32 % 2);
             cur_pos[1] = 32 * (blk32x32 / 2) + 16 * blk;
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -902,8 +1224,8 @@ int32_t FME::fme32x32(int blk32x32)
     case SIZE_Nx2N:
         cu_skip[1 + blk32x32] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][0];
-            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][1];
+            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0xfffc;
+            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0xfffc;
             cur_pos[0] = 32 * (blk32x32 % 2) + 16 * blk;
             cur_pos[1] = 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -954,8 +1276,8 @@ int32_t FME::fme16x16(int blk32x32, int blk16x16)
             mv[1] = (blk32x32 % 2 == 0 && blk16x16 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + 2 / 2][7][1][1] : mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + 2 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + 2 % 2 - 1][1][1]; //merge idx=0
         } else {
             cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
-            mv[0]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0];
-            mv[1]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1];
+            mv[0]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0xfffc;
+            mv[1]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0xfffc;
         }
         cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
         cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
@@ -998,8 +1320,8 @@ int32_t FME::fme16x16(int blk32x32, int blk16x16)
     case SIZE_2NxN:
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0];
-            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1];
+            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0xfffc;
+            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0xfffc;
             cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 8 * blk + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -1031,8 +1353,8 @@ int32_t FME::fme16x16(int blk32x32, int blk16x16)
     case SIZE_Nx2N:
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0];
-            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1];
+            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0xfffc;
+            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0xfffc;
             cur_pos[0] = 8 * blk + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -1083,8 +1405,8 @@ int32_t FME::fme8x8(int blk32x32, int blk16x16, int blk8x8)
             mv[1] = (blk32x32 % 2 == 0 && blk16x16 % 2 == 0 && blk8x8 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][7][1][1] : mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2 - 1][1][1]; //merge idx=0
         } else {
             cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] = 0;
-            mv[0]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0];
-            mv[1]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1];
+            mv[0]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0xfffc;
+            mv[1]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0xfffc;
         }
         cur_pos[0] = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
         cur_pos[1] = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
@@ -1126,8 +1448,8 @@ int32_t FME::fme8x8(int blk32x32, int blk16x16, int blk8x8)
     case SIZE_2NxN:
         cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][0];
-            mv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][1];
+            mv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][0] & 0xfffc;
+            mv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][1] & 0xfffc;
             cur_pos[0] = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 4 * blk + 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
@@ -1158,8 +1480,8 @@ int32_t FME::fme8x8(int blk32x32, int blk16x16, int blk8x8)
     case SIZE_Nx2N:
         cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] = 0;
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][0];
-            mv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][1];
+            mv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][0] & 0xfffc;
+            mv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][1] & 0xfffc;
             cur_pos[0] = 4 * blk + 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
             ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
