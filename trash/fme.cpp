@@ -38,12 +38,11 @@ void FME::load(param_t param_input, ime_t ime_out, rc_t ime_rc, rc_t prei_rc, Pr
     mb_x = fme_input.x;
     mb_y = fme_input.y;
 
-	isBoundry    = mb_x == param.frame_width / f_LCU_SIZE || mb_y == param.frame_height / f_LCU_SIZE;
-    is_x_Boundry = mb_x == param.frame_width / f_LCU_SIZE;
-    is_y_Boundry = mb_y == param.frame_height / f_LCU_SIZE;
-    x_Boundry    = param.frame_width % f_LCU_SIZE;  //the horizon pixel of the most left LCU when Framewidth is not integer 64pixel
-    y_Boundry    = param.frame_height % f_LCU_SIZE; //the vertical pixel of the most down LCU when Frameheight is not integer 64pixel
-
+	isBoundry = mb_x == param.frame_width / f_LCU_SIZE || mb_y == param.frame_height / f_LCU_SIZE;
+	is_x_Boundry = mb_x == param.frame_width / f_LCU_SIZE;
+	is_y_Boundry = mb_y == param.frame_height / f_LCU_SIZE;
+	x_Boundry = param.frame_width % f_LCU_SIZE;  //the horizon pixel of the most left LCU when Framewidth is not integer 64pixel
+	y_Boundry = param.frame_height % f_LCU_SIZE; //the vertical pixel of the most down LCU when Frameheight is not integer 64pixel
 
     // Initial variables.
     memset(cu_skip   , 0, sizeof(cu_skip)   );
@@ -383,6 +382,9 @@ void FME::run()
         x_range    = isXBoundry ? x_Boundry : f_LCU_SIZE;
         y_range    = isYBoundry ? y_Boundry : f_LCU_SIZE;
 
+
+		load_neighbor_mv();
+
         // FME process
         fme64x64();
 
@@ -393,5 +395,8 @@ void FME::run()
         // Skip process
         if(param.enable_inter_skip)
           skip();
+
+		load_fme_mv();
+
     }
 }

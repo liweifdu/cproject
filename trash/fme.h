@@ -65,11 +65,18 @@ private:
     PIXEL    qbuf[4][4][f_LCU_SIZE][f_LCU_SIZE];
 
     // cost
+	uint32_t min_cost;
     uint32_t cost;
 
     // MV temp
+	int16_t bmv[2];
+	int16_t imv[2];
     int16_t mv[2];
     int16_t dmv[2]; // fractional motion vector temp
+	int16_t mvc[3][2];
+
+	// index temp
+	int16_t min_index;
 
     // cur_pos and ref_pos
     int16_t cur_pos[2]; // position pointed to cur_mb
@@ -145,62 +152,89 @@ private:
     PIXEL merge_pred_luma[f_LCU_SIZE][f_LCU_SIZE];
 
 	//boundary var
-    bool    isBoundry;
-    bool    is_x_Boundry;
-    bool    is_y_Boundry;
+	bool    isBoundry;
+	bool    is_x_Boundry;
+	bool    is_y_Boundry;
+
+	int16_t fmv_8x8[4][4][4][2][2];
+	int16_t mvp_a_8x8[4][4][4][2];
+	int16_t mvp_b_8x8[4][4][4][2];
+	void load_neighbor_mv();
+	void load_fme_mv();
+	void findBestMVP(int pos_x, int pos_y, int width, int height, int16_t mvp_a[2], int16_t mvp_b[2]);
+	void testMVP(int row, int col, int num, bool &isExist, int16_t mvp[2]);
+
+	void mvp_compute64x64();
+	void mvp_compute64x32(int blk);
+	void mvp_compute32x64(int blk);
+
+	void mvp_compute32x32(int blk32x32);
+	void mvp_compute32x16(int blk32x32,int blk);
+	void mvp_compute16x32(int blk32x32,int blk);
+
+	void mvp_compute16x16(int blk32x32, int blk16x16);
+	void mvp_compute16x8 (int blk32x32, int blk16x16, int blk);
+	void mvp_compute8x16 (int blk32x32, int blk16x16, int blk);
+
+	void mvp_compute8x8(int blk32x32, int blk16x16, int blk8x8);
+	void mvp_compute8x4(int blk32x32, int blk16x16, int blk8x8, int blk);
+	void mvp_compute4x8(int blk32x32, int blk16x16, int blk8x8, int blk);
+
+	uint32_t pixel_sad_4x4(const PIXEL *pix1, const int i_stride_pix1, const PIXEL *pix2, const int i_stride_pix2);
+	uint16_t sub_hadmard_satd_8x4(PIXEL* pix1, PIXEL* pix2);
 
     // Skip Cost Threshold
 	uint32_t skipCost8x8, skipCost16x16, skipCost32x32, skipCost64x64;
 
 	// fme cost var
-    uint32_t cost64x64_2Nx2N, cost64x64_Nx2N, cost64x64_2NxN;
-    uint32_t cost32x32_2Nx2N[4], cost32x32_Nx2N[4], cost32x32_2NxN[4];
-    uint32_t cost16x16_2Nx2N[4][4], cost16x16_Nx2N[4][4], cost16x16_2NxN[4][4];
-    uint32_t cost8x8_2Nx2N[4][4][4];
+	uint32_t cost64x64_2Nx2N, cost64x64_Nx2N, cost64x64_2NxN;
+	uint32_t cost32x32_2Nx2N[4], cost32x32_Nx2N[4], cost32x32_2NxN[4];
+	uint32_t cost16x16_2Nx2N[4][4], cost16x16_Nx2N[4][4], cost16x16_2NxN[4][4];
+	uint32_t cost8x8_2Nx2N[4][4][4], cost8x8_Nx2N[4][4][4], cost8x8_2NxN[4][4][4];
 
 	// fme min cost used for comparison
-    uint32_t cost8x8_min[4][4][4];
-    uint32_t cost16x16_min[4][4];
-    uint32_t cost32x32_min[4];
-    uint32_t cost64x64_min;
+	uint32_t cost8x8_min[4][4][4];
+	uint32_t cost16x16_min[4][4];
+	uint32_t cost32x32_min[4];
+	uint32_t cost64x64_min;
 
     //----- fme method 1 function -----//
     // fractional estimation
 	uint32_t subpel_me(int pos_x, int pos_y, int len_x, int len_y, int16_t mv[2], int16_t dmv[2], bool b_half);
     // sub-fme func
     void    fme64x64();
-    void    fmectu();
+	void    fmectu();
     int32_t fme32x32(int blk32x32);
     int32_t fme16x16(int blk32x32, int blk16x16);
     int32_t fme8x8(int blk32x32, int blk16x16, int blk8x8);
 
 	// sub-fme cost func
-    void fme64x64cost();
-    void fme32x32cost(int blk32x32, int splitmode);
-    void fme16x16cost(int blk32x32, int blk16x16, int splitmode);
-    void fme8x8cost(int blk32x32, int blk16x16, int blk8x8);
+	void fme64x64cost();
+	void fme32x32cost(int blk32x32, int splitmode);
+	void fme16x16cost(int blk32x32, int blk16x16, int splitmode);
+	void fme8x8cost(int blk32x32, int blk16x16, int blk8x8, int splitmode);
 
 	// load from x265
 	void fmeloadx265();
 
 	//distortion calculation func and dump
-    uint32_t calcRDSADCost(int pos_x, int pos_y, int len_x, int len_y, int16_t mv[2], int min_index);
-    void     dumpcost();
+	uint32_t calcRDSADCost(int pos_x, int pos_y, int len_x, int len_y, int16_t mv[2], int min_index);
+	void dumpcost();
 
 	// sub-fme partition func
-    void fmepartition();
+	void fmepartition();
+
+	// update fmv
+	void fmeupdate();
+	void fme32x32update(int blk32x32);
+	void fme16x16update(int blk32x32, int blk16x16);
+	void fme8x8update(int blk32x32, int blk16x16, int blk8x8);
 
     // SATD calculation
     void hadamard_1d(int16_t &o_data0, int16_t &o_data1, int16_t &o_data2, int16_t &o_data3,
                      int16_t i_data0, int16_t i_data1, int16_t i_data2, int16_t i_data3);
     uint32_t sub_hadmard_satd(PIXEL *cur_4x4blk, PIXEL *ref_4x4blk);
     uint32_t sub_hadmard_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk);
-    int x265_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk);
-
-	//SAD calculation
-	uint32_t FME::pixel_subsad_WxH(PIXEL *pix1, int i_stride_pix1,
-		PIXEL *pix2, int i_stride_pix2,
-		int w, int h);
 
     //------ fme common function ------//
     // interpolation func

@@ -11,32 +11,12 @@
 #include "fme.h"
 #include <time.h>
 
-#define BITS_PER_SUM (8 * sizeof(uint16_t))
-#define HADAMARD4(d0, d1, d2, d3, s0, s1, s2, s3) \
-    {                                             \
-		uint32_t t0 = s0 + s1; \
-        uint32_t t2 = s2 + s3; \
-        uint32_t t3 = s2 - s3; \
-        uint32_t t1 = s0 - s1; \
-        d0 = t0 + t2;\
-        d2 = t0 - t2;\
-        d1 = t1 + t3;\
-        d3 = t1 - t3;\
-    }
-
-inline uint32_t abs2(uint32_t a)
-{
-    uint32_t s = ((a >> (BITS_PER_SUM - 1)) & (((uint32_t)1 << BITS_PER_SUM) + 1)) * ((uint16_t)-1);
-
-    return (a + s) ^ s;
-}
-
 /****************************************************************************
  * fme common function
  ****************************************************************************/
 void FME::fme64x64()
 {
-    cost = 0;
+	cost = 0;
     //clear buffer
     memset(ref_mb, 0, sizeof(ref_mb));
     memset(h_half_pel, 0, sizeof(h_half_pel));
@@ -51,146 +31,195 @@ void FME::fme64x64()
     memcpy(fme_output.fmv_8x8, fme_input.mv_8x8, sizeof(fme_input.mv_8x8));
 
 	//initial cost
-    cost64x64_2Nx2N = 0, cost64x64_Nx2N = 0, cost64x64_2NxN = 0, cost64x64_min = 0;
-    memset(cost32x32_2Nx2N, 0, sizeof(cost32x32_2Nx2N));
-    memset(cost32x32_2NxN, 0, sizeof(cost32x32_2NxN));
-    memset(cost32x32_Nx2N, 0, sizeof(cost32x32_Nx2N));
-    memset(cost16x16_2Nx2N, 0, sizeof(cost16x16_2Nx2N));
-    memset(cost16x16_2NxN, 0, sizeof(cost16x16_2NxN));
-    memset(cost16x16_Nx2N, 0, sizeof(cost16x16_Nx2N));
-    memset(cost8x8_2Nx2N, 0, sizeof(cost8x8_2Nx2N));
+	cost64x64_2Nx2N = 0, cost64x64_Nx2N = 0, cost64x64_2NxN = 0, cost64x64_min = 0;
+
+	memset(cost32x32_2Nx2N, 0, sizeof(cost32x32_2Nx2N));
+	memset(cost32x32_2NxN, 0, sizeof(cost32x32_2NxN));
+	memset(cost32x32_Nx2N, 0, sizeof(cost32x32_Nx2N));
+
+	memset(cost16x16_2Nx2N, 0, sizeof(cost16x16_2Nx2N));
+	memset(cost16x16_2NxN, 0, sizeof(cost16x16_2NxN));
+	memset(cost16x16_Nx2N, 0, sizeof(cost16x16_Nx2N));
+
+	memset(cost8x8_2Nx2N, 0, sizeof(cost8x8_2Nx2N));
+	memset(cost8x8_2NxN, 0, sizeof(cost8x8_2Nx2N));
+	memset(cost8x8_Nx2N, 0, sizeof(cost8x8_2Nx2N));
+
 	memset(cost8x8_min, 0, sizeof(cost8x8_min));
 	memset(cost16x16_min, 0, sizeof(cost16x16_min));
 	memset(cost32x32_min, 0, sizeof(cost32x32_min));
 
-	//initial mv
-	memset(fme_input.mv_8x8_tmp, 0, sizeof(fme_input.mv_8x8_tmp));
-	memset(fme_input.mv_16x16_tmp, 0, sizeof(fme_input.mv_16x16_tmp));
-	memset(fme_input.mv_32x32_tmp, 0, sizeof(fme_input.mv_32x32_tmp));
-	memset(fme_input.mv_64x64_tmp, 0, sizeof(fme_input.mv_64x64_tmp));
+	//initial mv, used for load test
+	memset(fme_input.mv_8x8_2Nx2N, 0, sizeof(fme_input.mv_8x8_2Nx2N));
+	memset(fme_input.mv_8x8_2NxN, 0, sizeof(fme_input.mv_8x8_2NxN));
+	memset(fme_input.mv_8x8_Nx2N, 0, sizeof(fme_input.mv_8x8_Nx2N));
+
+	memset(fme_input.mv_16x16_2Nx2N, 0, sizeof(fme_input.mv_16x16_2Nx2N));
+	memset(fme_input.mv_16x16_2NxN, 0, sizeof(fme_input.mv_16x16_2NxN));
+	memset(fme_input.mv_16x16_Nx2N, 0, sizeof(fme_input.mv_16x16_Nx2N));
+
+	memset(fme_input.mv_32x32_2Nx2N, 0, sizeof(fme_input.mv_32x32_2Nx2N));
+	memset(fme_input.mv_32x32_2NxN, 0, sizeof(fme_input.mv_32x32_2NxN));
+	memset(fme_input.mv_32x32_Nx2N, 0, sizeof(fme_input.mv_32x32_Nx2N));
+
+	memset(fme_input.mv_64x64_2Nx2N, 0, sizeof(fme_input.mv_64x64_2Nx2N));
+	memset(fme_input.mv_64x64_2NxN, 0, sizeof(fme_input.mv_64x64_2NxN));
+	memset(fme_input.mv_64x64_Nx2N, 0, sizeof(fme_input.mv_64x64_Nx2N));
 
 	//load x265 mv
-	fmeloadx265();
+	//fmeloadx265();
 
-    //calculate cost
-    fme64x64cost();
+	//calculate cost
+	//fme64x64cost();
 
-    //partition decision
-    fmepartition();
+	//partition decision
+	//fmepartition();
 
-    //dump cost
-    //dumpcost();
+	//dump cost
+	//dumpcost();
 
-    //do fme
-    //fmectu();
+    // do fme
+	fmectu();
 
 	//update fme
-	fmeupdate();
+	//fmeupdate();
 }
+
+void FME::dumpcost()
+{
+	FILE *fp = fopen("fme_cost.dat", "a");
+	for (int blk64x64 = 0; blk64x64 < 1; blk64x64++) {
+		fprintf(fp, "cu_idx = %02d\n", blk64x64);
+		fprintf(fp, "cost64x64_2Nx2N = %08x\n", cost64x64_2Nx2N);
+		fprintf(fp, "cost64x64_2NxN  = %08x\n", cost64x64_2NxN);
+		fprintf(fp, "cost64x64_Nx2N  = %08x\n", cost64x64_Nx2N);
+		for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
+			fprintf(fp, "cu_idx = %02d\n", 1 + blk32x32);
+			fprintf(fp, "cost32x32_2Nx2N = %08x\n", cost32x32_2Nx2N[blk32x32]);
+			fprintf(fp, "cost32x32_2NxN  = %08x\n", cost32x32_2NxN[blk32x32]);
+			fprintf(fp, "cost32x32_Nx2N  = %08x\n", cost32x32_Nx2N[blk32x32]);
+			for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
+				fprintf(fp, "cu_idx = %02d\n", (1 + ((1 + blk32x32) << 2) + blk16x16));
+				fprintf(fp, "cost16x16_2Nx2N = %08x\n", cost16x16_2Nx2N[blk32x32][blk16x16]);
+				fprintf(fp, "cost16x16_2NxN  = %08x\n", cost16x16_2NxN[blk32x32][blk16x16]);
+				fprintf(fp, "cost16x16_Nx2N  = %08x\n", cost16x16_Nx2N[blk32x32][blk16x16]);
+				for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) {
+					fprintf(fp, "cu_idx = %02d\n", (((1 + ((1 + blk32x32) << 2) + blk16x16) << 2) + blk8x8 + 1));
+					fprintf(fp, "cost8x8_2Nx2N = %08x\n", cost8x8_2Nx2N[blk32x32][blk16x16][blk8x8]);
+					//fprintf(fp, "cost8x8_2NxN = %08x\n", cost8x8_2NxN[blk32x32][blk16x16][blk8x8]);
+					//fprintf(fp, "cost8x8_Nx2N = %08x\n", cost8x8_Nx2N[blk32x32][blk16x16][blk8x8]);
+				}
+			}
+		}
+	}
+	fprintf(fp, "\n");
+	fclose(fp);
+}
+
 
 void FME::fmeupdate()
 {
 
 	int min_index;
-		switch (fme_input.cu_64x64_mode) {
-		case SIZE_2Nx2N: {
-			cu_skip[0] = 0;
-			mv[0] = fme_input.mv_64x64_tmp[0][0][0] & 0xfffc;
-			mv[1] = fme_input.mv_64x64_tmp[0][0][1] & 0xfffc;
-			cur_pos[0] = 0; // current pu position
-			cur_pos[1] = 0;
+	switch (fme_input.cu_64x64_mode) {
+	case SIZE_2Nx2N: {
+		cu_skip[0] = 0;
+		mv[0] = fme_input.mv_64x64_2Nx2N[0] & 0xfffc;
+		mv[1] = fme_input.mv_64x64_2Nx2N[1] & 0xfffc;
+		cur_pos[0] = 0; // current pu position
+		cur_pos[1] = 0;
+		ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+		ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+		// half me
+		interpolate_h(ref_pos[0], ref_pos[1], 64, 64);
+		dmv[0] = fme_input.mv_64x64_2Nx2N[0] & 0x0002; // new mv
+		dmv[1] = fme_input.mv_64x64_2Nx2N[1] & 0x0002;
+		// quart me
+		interpolate_q(ref_pos[0], ref_pos[1], 64, 64, dmv);
+		dmv[0] = fme_input.mv_64x64_2Nx2N[0] & 0x0001; // new mv
+		dmv[1] = fme_input.mv_64x64_2Nx2N[1] & 0x0001;
+		min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+		pixel_copy_WxH(64, 64, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+		// update fmv
+		for (int blk32x32 = 0; blk32x32 < 4; blk32x32++)
+			for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
+				for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+					for (int i = 0; i < 2; i++)
+						for (int k = 0; k < 2; k++) {
+							fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k] = fme_input.mv_64x64_2Nx2N[k];
+							mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_64x64_2Nx2N[k];
+							fmecost[blk32x32][blk16x16][blk8x8][i] = cost64x64_2Nx2N;
+						}
+	} break;
+	case SIZE_2NxN: {
+		cu_skip[0] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_64x64_2NxN[blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_64x64_2NxN[blk][1] & 0xfffc;
+			cur_pos[0] = 0;
+			cur_pos[1] = 32 * blk;
 			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
 			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
 			// half me
-			interpolate_h(ref_pos[0], ref_pos[1], 64, 64);
-			dmv[0] = fme_input.mv_64x64_tmp[0][0][0] & 0x0002; // new mv
-			dmv[1] = fme_input.mv_64x64_tmp[0][0][1] & 0x0002;
+			interpolate_h(ref_pos[0], ref_pos[1], 64, 32);
+			dmv[0] = fme_input.mv_64x64_2NxN[blk][0] & 0x0002; // new mv
+			dmv[1] = fme_input.mv_64x64_2NxN[blk][1] & 0x0002;
 			// quart me
-			interpolate_q(ref_pos[0], ref_pos[1], 64, 64, dmv);
-			dmv[0] = fme_input.mv_64x64_tmp[0][0][0] & 0x0001; // new mv
-			dmv[1] = fme_input.mv_64x64_tmp[0][0][1] & 0x0001;
+			interpolate_q(ref_pos[0], ref_pos[1], 64, 32, dmv);
+			dmv[0] = fme_input.mv_64x64_2NxN[blk][0] & 0x0001; // new mv
+			dmv[1] = fme_input.mv_64x64_2NxN[blk][1] & 0x0001;
 			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-			pixel_copy_WxH(64, 64, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+			pixel_copy_WxH(32, 64, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
 			// update fmv
-			for (int blk32x32 = 0; blk32x32 < 4; blk32x32++)
+			for (int blk32x32 = 0; blk32x32 < 2; blk32x32++)
 				for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
 					for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
 						for (int i = 0; i < 2; i++)
 							for (int k = 0; k < 2; k++) {
-								fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k] = fme_input.mv_64x64_tmp[0][0][k];
-								mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_64x64_tmp[0][0][k];
-								fmecost[blk32x32][blk16x16][blk8x8][i] = cost64x64_2Nx2N;
+								fme_output.fmv_8x8[blk32x32 + blk * 2][blk16x16][blk8x8][i][k] = fme_input.mv_64x64_2NxN[blk][k];
+								mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_64x64_2NxN[blk][k];
+								fmecost[blk32x32 + blk * 2][blk16x16][blk8x8][i] = cost64x64_2NxN;
 							}
-		} break;
-		case SIZE_2NxN: {
-			cu_skip[0] = 0;
-			for (int blk = 0; blk < 2; blk++) {
-				mv[0] = fme_input.mv_64x64_tmp[2][blk][0] & 0xfffc;
-				mv[1] = fme_input.mv_64x64_tmp[2][blk][1] & 0xfffc;
-				cur_pos[0] = 0;
-				cur_pos[1] = 32 * blk;
-				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-				// half me
-				interpolate_h(ref_pos[0], ref_pos[1], 64, 32);
-				dmv[0] = fme_input.mv_64x64_tmp[2][blk][0] & 0x0002; // new mv
-				dmv[1] = fme_input.mv_64x64_tmp[2][blk][1] & 0x0002;
-				// quart me
-				interpolate_q(ref_pos[0], ref_pos[1], 64, 32, dmv);
-				dmv[0] = fme_input.mv_64x64_tmp[2][blk][0] & 0x0001; // new mv
-				dmv[1] = fme_input.mv_64x64_tmp[2][blk][1] & 0x0001;
-				min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-				pixel_copy_WxH(32, 64, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
-				// update fmv
-				for (int blk32x32 = 0; blk32x32 < 2; blk32x32++)
-					for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
-						for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-							for (int i = 0; i < 2; i++)
-								for (int k = 0; k < 2; k++) {
-									fme_output.fmv_8x8[blk32x32 + blk * 2][blk16x16][blk8x8][i][k] = fme_input.mv_64x64_tmp[2][blk][k];
-									mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_64x64_tmp[2][blk][k];
-									fmecost[blk32x32 + blk * 2][blk16x16][blk8x8][i] = cost64x64_2NxN;
-								}
-			}
-		} break;
-		case SIZE_Nx2N: {
-			cu_skip[0] = 0;
-			for (int blk = 0; blk < 2; blk++) {
-				mv[0] = fme_input.mv_64x64_tmp[1][blk][0] & 0xfffc;
-				mv[1] = fme_input.mv_64x64_tmp[1][blk][1] & 0xfffc;
-				cur_pos[0] = 32 * blk;
-				cur_pos[1] = 0;
-				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-				// half me
-				interpolate_h(ref_pos[0], ref_pos[1], 32, 64);
-				dmv[0] = fme_input.mv_64x64_tmp[1][blk][0] & 0x0002;
-				dmv[1] = fme_input.mv_64x64_tmp[1][blk][1] & 0x0002;
-				// quart me
-				interpolate_q(ref_pos[0], ref_pos[1], 32, 64, dmv);
-				dmv[0] = fme_input.mv_64x64_tmp[1][blk][0] & 0x0001;
-				dmv[1] = fme_input.mv_64x64_tmp[1][blk][1] & 0x0001;
-				min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-				pixel_copy_WxH(64, 32, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
-				// update fmv
-				for (int blk32x32 = 0; blk32x32 < 2; blk32x32++)
-					for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
-						for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-							for (int i = 0; i < 2; i++)
-								for (int k = 0; k < 2; k++) {
-									fme_output.fmv_8x8[blk32x32 * 2 + blk][blk16x16][blk8x8][i][k] = fme_input.mv_64x64_tmp[1][blk][k];
-									mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_64x64_tmp[1][blk][k];
-									fmecost[blk32x32 * 2 + blk][blk16x16][blk8x8][i] = cost64x64_Nx2N;
-								}
-			}
-		} break;
-		case SPLIT:
-			for (int blk = 0; blk < 4; blk++) {
-				fme32x32update(blk);
-			}
-			break;
 		}
+	} break;
+	case SIZE_Nx2N: {
+		cu_skip[0] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_64x64_Nx2N[blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_64x64_Nx2N[blk][1] & 0xfffc;
+			cur_pos[0] = 32 * blk;
+			cur_pos[1] = 0;
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 32, 64);
+			dmv[0] = fme_input.mv_64x64_Nx2N[blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_64x64_Nx2N[blk][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 32, 64, dmv);
+			dmv[0] = fme_input.mv_64x64_Nx2N[blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_64x64_Nx2N[blk][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			pixel_copy_WxH(64, 32, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+			// update fmv
+			for (int blk32x32 = 0; blk32x32 < 2; blk32x32++)
+				for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
+					for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+						for (int i = 0; i < 2; i++)
+							for (int k = 0; k < 2; k++) {
+								fme_output.fmv_8x8[blk32x32 * 2 + blk][blk16x16][blk8x8][i][k] = fme_input.mv_64x64_Nx2N[blk][k];
+								mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_64x64_Nx2N[blk][k];
+								fmecost[blk32x32 * 2 + blk][blk16x16][blk8x8][i] = cost64x64_Nx2N;
+							}
+		}
+	} break;
+	case SPLIT:
+		for (int blk = 0; blk < 4; blk++) {
+			fme32x32update(blk);
+		}
+		break;
 	}
+}
 
 void FME::fme32x32update(int blk32x32)
 {
@@ -198,20 +227,20 @@ void FME::fme32x32update(int blk32x32)
 	switch (fme_input.cu_32x32_mode[blk32x32]) {
 	case SIZE_2Nx2N: {
 		cu_skip[1 + blk32x32] = 0;
-		mv[0] = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0xfffc;
-		mv[1] = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0xfffc;
+		mv[0] = fme_input.mv_32x32_2Nx2N[blk32x32][0] & 0xfffc;
+		mv[1] = fme_input.mv_32x32_2Nx2N[blk32x32][1] & 0xfffc;
 		cur_pos[0] = 32 * (blk32x32 % 2); // current pu position
 		cur_pos[1] = 32 * (blk32x32 / 2);
 		ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
 		ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
 		// half me
 		interpolate_h(ref_pos[0], ref_pos[1], 32, 32);
-		dmv[0] = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0x0002; // new mv
-		dmv[1] = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0x0002;
+		dmv[0] = fme_input.mv_32x32_2Nx2N[blk32x32][0] & 0x0002; // new mv
+		dmv[1] = fme_input.mv_32x32_2Nx2N[blk32x32][1] & 0x0002;
 		// quart me
 		interpolate_q(ref_pos[0], ref_pos[1], 32, 32, dmv);
-		dmv[0] = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0x0001; // new mv
-		dmv[1] = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0x0001;
+		dmv[0] = fme_input.mv_32x32_2Nx2N[blk32x32][0] & 0x0001; // new mv
+		dmv[1] = fme_input.mv_32x32_2Nx2N[blk32x32][1] & 0x0001;
 		min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
 		pixel_copy_WxH(32, 32, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
 		// update fmv
@@ -219,28 +248,28 @@ void FME::fme32x32update(int blk32x32)
 			for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
 				for (int i = 0; i < 2; i++)
 					for (int k = 0; k < 2; k++) {
-						fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k] = fme_input.mv_32x32_tmp[blk32x32][0][0][k];
-						mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_32x32_tmp[blk32x32][0][0][k];
+						fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k] = fme_input.mv_32x32_2Nx2N[blk32x32][k];
+						mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_32x32_2Nx2N[blk32x32][k];
 						fmecost[blk32x32][blk16x16][blk8x8][i] = cost32x32_2Nx2N[blk32x32];
 					}
 	} break;
 	case SIZE_2NxN: {
 		cu_skip[1 + blk32x32] = 0;
 		for (int blk = 0; blk < 2; blk++) {
-			mv[0] = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0xfffc;
-			mv[1] = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0xfffc;
+			mv[0] = fme_input.mv_32x32_2NxN[blk32x32][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_32x32_2NxN[blk32x32][blk][1] & 0xfffc;
 			cur_pos[0] = 32 * (blk32x32 % 2);
 			cur_pos[1] = 32 * (blk32x32 / 2) + 16 * blk;
 			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
 			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
 			// half me
 			interpolate_h(ref_pos[0], ref_pos[1], 32, 16);
-			dmv[0] = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0x0002;
-			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0x0002;
+			dmv[0] = fme_input.mv_32x32_2NxN[blk32x32][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_32x32_2NxN[blk32x32][blk][1] & 0x0002;
 			// quart me
 			interpolate_q(ref_pos[0], ref_pos[1], 32, 16, dmv);
-			dmv[0] = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0x0001;
-			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0x0001;
+			dmv[0] = fme_input.mv_32x32_2NxN[blk32x32][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_32x32_2NxN[blk32x32][blk][1] & 0x0001;
 			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
 			pixel_copy_WxH(16, 32, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
 			// update fmv
@@ -248,8 +277,8 @@ void FME::fme32x32update(int blk32x32)
 				for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
 					for (int i = 0; i < 2; i++)
 						for (int k = 0; k < 2; k++) {
-							fme_output.fmv_8x8[blk32x32][blk16x16 + blk * 2][blk8x8][i][k] = mv[k];
-							mv_store[blk32x32 / 2 * 4 + (blk * 2 + blk16x16) / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + (blk * 2 + blk16x16) % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
+							fme_output.fmv_8x8[blk32x32][blk16x16 + blk * 2][blk8x8][i][k] = fme_input.mv_32x32_2NxN[blk32x32][blk][k];
+							mv_store[blk32x32 / 2 * 4 + (blk * 2 + blk16x16) / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + (blk * 2 + blk16x16) % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_32x32_2NxN[blk32x32][blk][k];
 							fmecost[blk32x32][blk16x16 + blk * 2][blk8x8][i] = cost32x32_2NxN[blk32x32];
 						}
 		}
@@ -257,20 +286,20 @@ void FME::fme32x32update(int blk32x32)
 	case SIZE_Nx2N: {
 		cu_skip[1 + blk32x32] = 0;
 		for (int blk = 0; blk < 2; blk++) {
-			mv[0] = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0xfffc;
-			mv[1] = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0xfffc;
+			mv[0] = fme_input.mv_32x32_Nx2N[blk32x32][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_32x32_Nx2N[blk32x32][blk][1] & 0xfffc;
 			cur_pos[0] = 32 * (blk32x32 % 2) + 16 * blk;
 			cur_pos[1] = 32 * (blk32x32 / 2);
 			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
 			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
 			// half me
 			interpolate_h(ref_pos[0], ref_pos[1], 16, 32);
-			dmv[0] = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0x0002;
-			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0x0002;
+			dmv[0] = fme_input.mv_32x32_Nx2N[blk32x32][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_32x32_Nx2N[blk32x32][blk][1] & 0x0002;
 			// quart me
 			interpolate_q(ref_pos[0], ref_pos[1], 16, 32, dmv);
-			dmv[0] = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0x0001;
-			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0x0001;
+			dmv[0] = fme_input.mv_32x32_Nx2N[blk32x32][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_32x32_Nx2N[blk32x32][blk][1] & 0x0001;
 			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
 			pixel_copy_WxH(32, 16, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
 			// update fmv
@@ -278,15 +307,15 @@ void FME::fme32x32update(int blk32x32)
 				for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
 					for (int i = 0; i < 2; i++)
 						for (int k = 0; k < 2; k++) {
-							fme_output.fmv_8x8[blk32x32][blk16x16 * 2 + blk][blk8x8][i][k] = fme_input.mv_32x32_tmp[blk32x32][1][blk][k];
-							mv_store[blk32x32 / 2 * 4 + (blk16x16 * 2 + blk) / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + (blk16x16 * 2 + blk) % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_32x32_tmp[blk32x32][1][blk][k];
+							fme_output.fmv_8x8[blk32x32][blk16x16 * 2 + blk][blk8x8][i][k] = fme_input.mv_32x32_Nx2N[blk32x32][blk][k];
+							mv_store[blk32x32 / 2 * 4 + (blk16x16 * 2 + blk) / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + (blk16x16 * 2 + blk) % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_32x32_Nx2N[blk32x32][blk][k];
 							fmecost[blk32x32][blk16x16 * 2 + blk][blk8x8][i] = cost32x32_Nx2N[blk32x32];
 						}
 		}
 	} break;
 	case SPLIT:
 		for (int blk = 0; blk < 4; blk++) {
-				fme16x16update(blk32x32, blk);
+			fme16x16update(blk32x32, blk);
 		}
 		break;
 	}
@@ -298,56 +327,56 @@ void FME::fme16x16update(int blk32x32, int blk16x16)
 	switch (fme_input.cu_16x16_mode[blk32x32][blk16x16]) {
 	case SIZE_2Nx2N: {
 		cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
-		mv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0xfffc;
-		mv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0xfffc;
+		mv[0] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][0] & 0xfffc;
+		mv[1] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][1] & 0xfffc;
 		cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
 		cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
 		ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
 		ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
 		// half me
 		interpolate_h(ref_pos[0], ref_pos[1], 16, 16);
-		dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0x0002; // new mv
-		dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0x0002;
+		dmv[0] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][0] & 0x0002; // new mv
+		dmv[1] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][1] & 0x0002;
 		// quart me
 		interpolate_q(ref_pos[0], ref_pos[1], 16, 16, dmv);
-		dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0x0001; // new mv
-		dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0x0001;
+		dmv[0] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][0] & 0x0001; // new mv
+		dmv[1] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][1] & 0x0001;
 		min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
 		pixel_copy_WxH(16, 16, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
 		// update fmv
 		for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
 			for (int i = 0; i < 2; i++)
 				for (int k = 0; k < 2; k++) {
-					fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][k];
-					mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][k];
+					fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][k];
+					mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][k];
 					fmecost[blk32x32][blk16x16][blk8x8][i] = cost16x16_2Nx2N[blk32x32][blk16x16];
 				}
 	} break;
 	case SIZE_2NxN: {
 		cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
 		for (int blk = 0; blk < 2; blk++) {
-			mv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0xfffc;
-			mv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0xfffc;
+			mv[0] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][1] & 0xfffc;
 			cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
 			cur_pos[1] = 8 * blk + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
 			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
 			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
 			// half me
 			interpolate_h(ref_pos[0], ref_pos[1], 16, 8);
-			dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0x0002;
-			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0x0002;
+			dmv[0] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][1] & 0x0002;
 			// quart me
 			interpolate_q(ref_pos[0], ref_pos[1], 16, 8, dmv);
-			dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0x0001;
-			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0x0001;
+			dmv[0] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][1] & 0x0001;
 			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
 			pixel_copy_WxH(8, 16, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
 			// update fmv
 			for (int blk8x8 = 0; blk8x8 < 2; blk8x8++)
 				for (int i = 0; i < 2; i++)
 					for (int k = 0; k < 2; k++) {
-						fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 + blk * 2][i][k] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][k];
-						mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + (blk8x8 + blk * 2) / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + (blk8x8 + blk * 2) % 2][i][k] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][k];
+						fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 + blk * 2][i][k] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][k];
+						mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + (blk8x8 + blk * 2) / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + (blk8x8 + blk * 2) % 2][i][k] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][k];
 						fmecost[blk32x32][blk16x16][blk8x8 + blk * 2][i] = cost16x16_2NxN[blk32x32][blk16x16];
 					}
 		}
@@ -355,28 +384,29 @@ void FME::fme16x16update(int blk32x32, int blk16x16)
 	case SIZE_Nx2N: {
 		cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
 		for (int blk = 0; blk < 2; blk++) {
-			mv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0xfffc;
-			mv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0xfffc;
+			mv[0] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][1] & 0xfffc;
 			cur_pos[0] = 8 * blk + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
 			cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
 			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
 			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
 			// half me
 			interpolate_h(ref_pos[0], ref_pos[1], 8, 16);
-			dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0x0002;
-			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0x0002;
+			dmv[0] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][1] & 0x0002;
 			// quart me
 			interpolate_q(ref_pos[0], ref_pos[1], 8, 16, dmv);
 			//cost16x16 += subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
-			dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0x0001;
-			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0x0001;
+			dmv[0] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
 			pixel_copy_WxH(16, 8, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
 			// update fmv
 			for (int blk8x8 = 0; blk8x8 < 2; blk8x8++)
 				for (int i = 0; i < 2; i++)
 					for (int k = 0; k < 2; k++) {
-						fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 * 2 + blk][i][k] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][k];
-						mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + (blk8x8 * 2 + blk) / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + (blk8x8 * 2 + blk) % 2][i][k] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][k];
+						fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 * 2 + blk][i][k] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][k];
+						mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + (blk8x8 * 2 + blk) / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + (blk8x8 * 2 + blk) % 2][i][k] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][k];
 						fmecost[blk32x32][blk16x16][blk8x8 * 2 + blk][i] = cost16x16_Nx2N[blk32x32][blk16x16];
 					}
 		}
@@ -392,45 +422,102 @@ void FME::fme16x16update(int blk32x32, int blk16x16)
 void FME::fme8x8update(int blk32x32, int blk16x16, int blk8x8)
 {
 	int min_index;
-	cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] = 0;
-	mv[0] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0xfffc;
-	mv[1] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0xfffc;
-	cur_pos[0] = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
-	cur_pos[1] = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-	ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-	ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-	// half me
-	interpolate_h(ref_pos[0], ref_pos[1], 8, 8);
-	dmv[0] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0x0002; // new mv
-	dmv[1] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0x0002;
-	// quart me
-	interpolate_q(ref_pos[0], ref_pos[1], 8, 8, dmv);
-	dmv[0] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0x0001; // new mv
-	dmv[1] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0x0001;
-	min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-	pixel_copy_WxH(8, 8, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
-	// update fmv
-	for (int i = 0; i < 2; i++)
-		for (int k = 0; k < 2; k++) {
-			fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][k];
-			mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][k];
-			fmecost[blk32x32][blk16x16][blk8x8][i] = cost8x8_2Nx2N[blk32x32][blk16x16][blk8x8];
+	switch (fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8])
+	{
+	case SIZE_2Nx2N: {
+		mv[0] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][0] & 0xfffc;
+		mv[1] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][1] & 0xfffc;
+		cur_pos[0] = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
+		cur_pos[1] = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+		ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+		ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+		// half me
+		interpolate_h(ref_pos[0], ref_pos[1], 16, 16);
+		dmv[0] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][0] & 0x0002; // new mv
+		dmv[1] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][1] & 0x0002;
+		// quart me
+		interpolate_q(ref_pos[0], ref_pos[1], 16, 16, dmv);
+		dmv[0] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][0] & 0x0001; // new mv
+		dmv[1] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][1] & 0x0001;
+		min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+		pixel_copy_WxH(8, 8, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+		// update fmv
+		for (int i = 0; i < 2; i++)
+			for (int k = 0; k < 2; k++) {
+				fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][k];
+				mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][k];
+				fmecost[blk32x32][blk16x16][blk8x8][i] = cost8x8_2Nx2N[blk32x32][blk16x16][blk8x8];
+			}
+	} break;
+	case SIZE_2NxN: {
+		cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][1] & 0xfffc;
+			cur_pos[0] = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
+			cur_pos[1] = 4 * blk + 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 16, 8);
+			dmv[0] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 16, 8, dmv);
+			dmv[0] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			pixel_copy_WxH(4, 8, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+			// update fmv
+			for (int k = 0; k < 2; k++) {
+				fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][blk][k] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][k];
+				mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][blk][k] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][k];
+				fmecost[blk32x32][blk16x16][blk8x8][blk] = cost8x8_2NxN[blk32x32][blk16x16][blk8x8];
+			}
 		}
+	} break;
+	case SIZE_Nx2N: {
+		cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][1] & 0xfffc;
+			cur_pos[0] = 4 * blk + 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
+			cur_pos[1] = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 8, 16);
+			dmv[0] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 8, 16, dmv);
+			//cost16x16 += subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
+			dmv[0] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			pixel_copy_WxH(8, 4, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+			// update fmv
+			for (int k = 0; k < 2; k++) {
+				fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 * 2][blk][k] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][k];
+				mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][blk][k] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][k];
+				fmecost[blk32x32][blk16x16][blk8x8][blk] = cost8x8_Nx2N[blk32x32][blk16x16][blk8x8];
+			}
+		}
+	} break;
+	default:
+		break;
+	}
 }
 
 
-
-void FME::fmeloadx265()
-{
-	int safe_temp = 0;
+void FME::fmeloadx265() {
+	int safe_temp = 0, part_x = 0, part_y = 0;
 	char postfix1[] = "_interFullMV.log";
 	char* fileName1 = new char[100];
 	strcpy(fileName1, (char*)param.dump_prefix.data());
 	fileName1 = strcat(fileName1, postfix1);
 	static FILE *fp = fopen(fileName1, "rb");
 	/*
-	int part_x;
-	int part_y;
 	for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
 		part_x = 32 * (blk32x32 % 2);
 		part_y = 32 * (blk32x32 / 2);
@@ -443,42 +530,69 @@ void FME::fmeloadx265()
 				continue;
 			//8x8
 			for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) {
-				for (int index = 0; index < 3; index++) {
-					for (int half = 0; half < 2; half++) {
+				//8x8 2Nx2N
+				for (int i = 0; i < 2; i++) {
+					fscanf(fp, "%x", &safe_temp);
+					fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][i] = safe_temp;
+				}
+				//8x8 Nx2N
+				for (int puIdx = 0; puIdx < 2; puIdx++) {
+					for (int i = 0; i < 2; i++) {
 						fscanf(fp, "%x", &safe_temp);
-						fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][index][half][0] = safe_temp;
+						fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][puIdx][i] = safe_temp;
+					}
+				}
+				//8x8 2NxN
+				for (int puIdx = 0; puIdx < 2; puIdx++) {
+					for (int i = 0; i < 2; i++) {
 						fscanf(fp, "%x", &safe_temp);
-						fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][index][half][1] = safe_temp;
+						fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][puIdx][i] = safe_temp;
 					}
 				}
 			}
 			//16x16
-			for (int index = 0; index < 3; index++) {
-				for (int half = 0; half < 2; half++) {
+			//16x16 2Nx2N
+			for (int i = 0; i < 2; i++) {
+				fscanf(fp, "%x", &safe_temp);
+				fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][i] = safe_temp;
+			}
+			//16x16 Nx2N
+			for (int puIdx = 0; puIdx < 2; puIdx++) {
+				for (int i = 0; i < 2; i++) {
 					fscanf(fp, "%x", &safe_temp);
-					fme_input.mv_16x16_tmp[blk32x32][blk16x16][index][half][0] = safe_temp;
+					fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][puIdx][i] = safe_temp;
+				}
+			}
+			//16x16 2NxN
+			for (int puIdx = 0; puIdx < 2; puIdx++) {
+				for (int i = 0; i < 2; i++) {
 					fscanf(fp, "%x", &safe_temp);
-					fme_input.mv_16x16_tmp[blk32x32][blk16x16][index][half][1] = safe_temp;
+					fme_input.mv_16x16_2NxN[blk32x32][blk16x16][puIdx][i] = safe_temp;
 				}
 			}
 		}
 		//32x32
-		for (int index = 0; index < 3; index++) {
-			for (int half = 0; half < 2; half++) {
+		//32x32 2Nx2N
+		for (int i = 0; i < 2; i++) {
+			fscanf(fp, "%x", &safe_temp);
+			fme_input.mv_32x32_2Nx2N[blk32x32][i] = safe_temp;
+		}
+		//32x32 Nx2N
+		for (int puIdx = 0; puIdx < 2; puIdx++) {
+			for (int i = 0; i < 2; i++) {
 				fscanf(fp, "%x", &safe_temp);
-				fme_input.mv_32x32_tmp[blk32x32][index][half][0] = safe_temp;
-				fscanf(fp, "%x", &safe_temp);
-				fme_input.mv_32x32_tmp[blk32x32][index][half][1] = safe_temp;
+				fme_input.mv_32x32_Nx2N[blk32x32][puIdx][i] = safe_temp;
 			}
 		}
-	}
-	//64x64
-	for (int index = 0; index < 3; index++) {
-		for (int half = 0; half < 2; half++) {
-			fme_input.mv_64x64_tmp[index][half][0] = 0;
-			fme_input.mv_64x64_tmp[index][half][1] = 0;
+		//32x32 2NxN
+		for (int puIdx = 0; puIdx < 2; puIdx++) {
+			for (int i = 0; i < 2; i++) {
+				fscanf(fp, "%x", &safe_temp);
+				fme_input.mv_32x32_2NxN[blk32x32][puIdx][i] = safe_temp;
+			}
 		}
 	}*/
+	
 	int blk32x32, blk16x16, blk8x8;
 	for (int i = 0; i < 84; i++) {
 		blk32x32 = i / 21;
@@ -494,1017 +608,1430 @@ void FME::fmeloadx265()
 			blk16x16 = ((safe_temp - 21) / 4) % 4;
 			blk8x8 = (safe_temp - 21) % 4;
 			fscanf(fp, "%x", &safe_temp);
-			for (int index = 0; index < 3; index++) 
-				for (int half = 0; half < 2; half++)
-					fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][index][half][0] = safe_temp;
+			fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][0] = safe_temp;
+			for (int puIdx = 0; puIdx < 2; puIdx++) {
+				fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][puIdx][0] = safe_temp;
+				fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][puIdx][0] = safe_temp;
+			}
 			fscanf(fp, "%x", &safe_temp);
-			for (int index = 0; index < 3; index++)
-				for (int half = 0; half < 2; half++)
-					fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][index][half][1] = safe_temp;
-
+			fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][1] = safe_temp;
+			for (int puIdx = 0; puIdx < 2; puIdx++) {
+				fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][puIdx][1] = safe_temp;
+				fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][puIdx][1] = safe_temp;
+			}
 		}
 		else if (safe_temp > 4) {
 			blk32x32 = (safe_temp - 5) / 4;
 			blk16x16 = (safe_temp - 5) % 4;
 			fscanf(fp, "%x", &safe_temp);
-			for (int index = 0; index < 3; index++)
-				for (int half = 0; half < 2; half++)
-					fme_input.mv_16x16_tmp[blk32x32][blk16x16][index][half][0] = safe_temp;
+			fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][0] = safe_temp;
+			for (int puIdx = 0; puIdx < 2; puIdx++) {
+				fme_input.mv_16x16_2NxN[blk32x32][blk16x16][puIdx][0] = safe_temp;
+				fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][puIdx][0] = safe_temp;
+			}
 			fscanf(fp, "%x", &safe_temp);
-			for (int index = 0; index < 3; index++)
-				for (int half = 0; half < 2; half++)
-					fme_input.mv_16x16_tmp[blk32x32][blk16x16][index][half][1] = safe_temp;
-			
+			fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][1] = safe_temp;
+			for (int puIdx = 0; puIdx < 2; puIdx++) {
+				fme_input.mv_16x16_2NxN[blk32x32][blk16x16][puIdx][1] = safe_temp;
+				fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][puIdx][1] = safe_temp;
+			}
+
 		}
 		else if (safe_temp > 0) {
 			blk32x32 = safe_temp - 1;
 			fscanf(fp, "%x", &safe_temp);
-			for (int index = 0; index < 3; index++)
-				for (int half = 0; half < 2; half++)
-					fme_input.mv_32x32_tmp[blk32x32][index][half][0] = safe_temp;
+			fme_input.mv_32x32_2Nx2N[blk32x32][0] = safe_temp;
+			for (int puIdx = 0; puIdx < 2; puIdx++) {
+				fme_input.mv_32x32_2NxN[blk32x32][puIdx][0] = safe_temp;
+				fme_input.mv_32x32_Nx2N[blk32x32][puIdx][0] = safe_temp;
+			}
 			fscanf(fp, "%x", &safe_temp);
-			for (int index = 0; index < 3; index++)
-				for (int half = 0; half < 2; half++)
-					fme_input.mv_32x32_tmp[blk32x32][index][half][1] = safe_temp;
+			fme_input.mv_32x32_2Nx2N[blk32x32][1] = safe_temp;
+			for (int puIdx = 0; puIdx < 2; puIdx++) {
+				fme_input.mv_32x32_2NxN[blk32x32][puIdx][1] = safe_temp;
+				fme_input.mv_32x32_Nx2N[blk32x32][puIdx][1] = safe_temp;
+			}
 
 		}
 		else
 		{
 			fscanf(fp, "%x", &safe_temp);
-			for (int index = 0; index < 3; index++)
-				for (int half = 0; half < 2; half++)
-					fme_input.mv_64x64_tmp[index][half][0] = 0;
+			fme_input.mv_64x64_2Nx2N[0] = safe_temp;
+			for (int puIdx = 0; puIdx < 2; puIdx++) {
+				fme_input.mv_64x64_2NxN[puIdx][0] = safe_temp;
+				fme_input.mv_64x64_Nx2N[puIdx][0] = safe_temp;
+			}
 			fscanf(fp, "%x", &safe_temp);
-			for (int index = 0; index < 3; index++)
-				for (int half = 0; half < 2; half++)
-					fme_input.mv_64x64_tmp[index][half][0] = 0;
+			fme_input.mv_64x64_2Nx2N[1] = safe_temp;
+			for (int puIdx = 0; puIdx < 2; puIdx++) {
+				fme_input.mv_64x64_2NxN[puIdx][1] = safe_temp;
+				fme_input.mv_64x64_Nx2N[puIdx][1] = safe_temp;
+			}
 		}
 	}
 }
 
-
-void FME::dumpcost()
-{
-    FILE *fp = fopen("fme_cost.dat", "a");
-    for (int blk64x64 = 0; blk64x64 < 1; blk64x64++) {
-        fprintf(fp, "cu_idx = %02d\n", blk64x64);
-        fprintf(fp, "cost64x64_2Nx2N = %08x\n", cost64x64_2Nx2N);
-        fprintf(fp, "cost64x64_2NxN  = %08x\n", cost64x64_2NxN);
-        fprintf(fp, "cost64x64_Nx2N  = %08x\n", cost64x64_Nx2N);
-        for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
-            fprintf(fp, "cu_idx = %02d\n", 1 + blk32x32);
-            fprintf(fp, "cost32x32_2Nx2N = %08x\n", cost32x32_2Nx2N[blk32x32]);
-            fprintf(fp, "cost32x32_2NxN  = %08x\n", cost32x32_2NxN[blk32x32]);
-            fprintf(fp, "cost32x32_Nx2N  = %08x\n", cost32x32_Nx2N[blk32x32]);
-            for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
-                fprintf(fp, "cu_idx = %02d\n", (1 + ((1 + blk32x32) << 2) + blk16x16));
-                fprintf(fp, "cost16x16_2Nx2N = %08x\n", cost16x16_2Nx2N[blk32x32][blk16x16]);
-                fprintf(fp, "cost16x16_2NxN  = %08x\n", cost16x16_2NxN[blk32x32][blk16x16]);
-                fprintf(fp, "cost16x16_Nx2N  = %08x\n", cost16x16_Nx2N[blk32x32][blk16x16]);
-                for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) {
-                    fprintf(fp, "cu_idx = %02d\n", (((1 + ((1 + blk32x32) << 2) + blk16x16) << 2) + blk8x8 + 1));
-                    fprintf(fp, "cost8x8_2Nx2N = %08x\n", cost8x8_2Nx2N[blk32x32][blk16x16][blk8x8]);
-                }
-            }
-        }
-    }
-    fprintf(fp, "\n");
-    fclose(fp);
-}
-
 uint32_t FME::calcRDSADCost(int pos_x, int pos_y, int len_x, int len_y, int16_t mv[2], int min_index)
 {
-    uint32_t satd       = 0;
-	uint32_t sad        = 0;
-    uint32_t distortion = COST_MAX;
-    for (int blk8x8_y = 0; blk8x8_y < len_y; blk8x8_y += 8)
-        for (int blk8x8_x = 0; blk8x8_x < len_x; blk8x8_x += 8) {
-			//sad += pixel_subsad_WxH(&cur_mb.luma[pos_y + blk8x8_y][pos_x + blk8x8_x], f_LCU_SIZE, &ref_mb[min_index][blk8x8_y][blk8x8_x], f_LCU_SIZE, 8, 8);
-            satd += sub_hadmard_satd_8x8(&cur_mb.luma[pos_y + blk8x8_y][pos_x + blk8x8_x], &ref_mb[min_index][blk8x8_y][blk8x8_x]);
-        }
-    distortion = satd + (lambda_tab[fme_input.qp] * (getBits(abs(mv[0])) + getBits(abs(mv[1]))));
-	//distortion = satd;
-    return distortion;
+	uint32_t satd = 0;
+	uint32_t sad = 0;
+	uint32_t distortion = COST_MAX;
+	/*for (int blk8x4_y = 0; blk8x4_y < len_y; blk8x4_y += 4)
+		for (int blk8x4_x = 0; blk8x4_x < len_x; blk8x4_x += 8) {
+			satd += sub_hadmard_satd_8x4(&cur_mb.luma[pos_y + blk8x4_y][pos_x + blk8x4_x], &ref_mb[min_index][blk8x4_y][blk8x4_x]);
+		}
+	distortion = satd + (uint16_t)(lambda_tab_x265[fme_input.qp] * getBits_x265(abs(mv[0])) + 0.5f) + (uint16_t)(lambda_tab_x265[fme_input.qp] * getBits_x265(abs(mv[1])) + 0.5f);*/
+	for (int blk8x8_y = 0; blk8x8_y < len_y; blk8x8_y += 8)
+		for (int blk8x8_x = 0; blk8x8_x < len_x; blk8x8_x += 8) {
+			satd += sub_hadmard_satd_8x8(&cur_mb.luma[pos_y + blk8x8_y][pos_x + blk8x8_x], &ref_mb[min_index][blk8x8_y][blk8x8_x]);
+		}
+	distortion = satd + (lambda_tab[fme_input.qp] * (getBits(abs(mv[0])) + getBits(abs(mv[1]))));
+	return distortion;
 }
 
-void FME::fme64x64cost()
-{
-	
-    int min_index;
-    for (int splitmode = 0; splitmode < 4; splitmode++) {
-        switch (splitmode) {
-        case SIZE_2Nx2N: {
-            cu_skip[0] = 0;
-            mv[0]      = fme_input.mv_64x64_tmp[0][0][0] & 0xfffc;
-            mv[1]      = fme_input.mv_64x64_tmp[0][0][1] & 0xfffc;
-            cur_pos[0] = 0; // current pu position
-            cur_pos[1] = 0;
-            ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-            ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-            // half me
-            interpolate_h(ref_pos[0], ref_pos[1], 64, 64);
-            dmv[0] = fme_input.mv_64x64_tmp[0][0][0] & 0x0002; // new mv
-            dmv[1] = fme_input.mv_64x64_tmp[0][0][1] & 0x0002;
-            // quart me
-            interpolate_q(ref_pos[0], ref_pos[1], 64, 64, dmv);
-			dmv[0] = fme_input.mv_64x64_tmp[0][0][0] & 0x0001; // new mv
-			dmv[1] = fme_input.mv_64x64_tmp[0][0][1] & 0x0001;
-            min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            uint32_t cost64x64 = calcRDSADCost(cur_pos[0], cur_pos[1], 64, 64, fme_input.mv_64x64_tmp[0][0], min_index);
-            cost64x64_2Nx2N    = cost64x64;
-        } break;
-        case SIZE_2NxN: {
-            cu_skip[0] = 0;
-            for (int blk = 0; blk < 2; blk++) {
-                mv[0]      = fme_input.mv_64x64_tmp[2][blk][0] & 0xfffc;
-                mv[1]      = fme_input.mv_64x64_tmp[2][blk][1] & 0xfffc;
-                cur_pos[0] = 0;
-                cur_pos[1] = 32 * blk;
-                ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-                ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-                // half me
-                interpolate_h(ref_pos[0], ref_pos[1], 64, 32);
-				dmv[0] = fme_input.mv_64x64_tmp[2][blk][0] & 0x0002; // new mv
-				dmv[1] = fme_input.mv_64x64_tmp[2][blk][1] & 0x0002;
-                // quart me
-                interpolate_q(ref_pos[0], ref_pos[1], 64, 32, dmv);
-				dmv[0] = fme_input.mv_64x64_tmp[2][blk][0] & 0x0001; // new mv
-				dmv[1] = fme_input.mv_64x64_tmp[2][blk][1] & 0x0001;
-                min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
-                uint32_t cost64x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 64, 32, fme_input.mv_64x64_tmp[2][blk], min_index);
-                cost64x64_2NxN += cost64x32;
-            }
-        } break;
-        case SIZE_Nx2N: {
-            cu_skip[0] = 0;
-            for (int blk = 0; blk < 2; blk++) {
-                mv[0]      = fme_input.mv_64x64_tmp[1][blk][0] & 0xfffc;
-                mv[1]      = fme_input.mv_64x64_tmp[1][blk][1] & 0xfffc;
-                cur_pos[0] = 32 * blk;
-                cur_pos[1] = 0;
-                ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-                ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-                // half me
-                interpolate_h(ref_pos[0], ref_pos[1], 32, 64);
-                dmv[0] = fme_input.mv_64x64_tmp[1][blk][0] & 0x0002;
-				dmv[1] = fme_input.mv_64x64_tmp[1][blk][1] & 0x0002;
-                // quart me
-                interpolate_q(ref_pos[0], ref_pos[1], 32, 64, dmv);
-				dmv[0] = fme_input.mv_64x64_tmp[1][blk][0] & 0x0001;
-				dmv[1] = fme_input.mv_64x64_tmp[1][blk][1] & 0x0001;
-                min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
-                uint32_t cost32x64 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 64, fme_input.mv_64x64_tmp[1][blk], min_index);
-                cost64x64_Nx2N += cost32x64;
-            }
-        } break;
-        case 3:
-            for (int blk = 0; blk < 4; blk++) {
-                for (int splitmode = 0; splitmode < 4; splitmode++)
-                    fme32x32cost(blk, splitmode);
-            }
-            break;
-        }
-    }
+void FME::fme64x64cost() {
+	int min_index;
+	for (int splitmode = 0; splitmode < 4; splitmode++) {
+		switch (splitmode) {
+		case SIZE_2Nx2N: {
+			cu_skip[0] = 0;
+			mv[0] = fme_input.mv_64x64_2Nx2N[0] & 0xfffc;
+			mv[1] = fme_input.mv_64x64_2Nx2N[1] & 0xfffc;
+			cur_pos[0] = 0; // current pu position
+			cur_pos[1] = 0;
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 64, 64);
+			dmv[0] = fme_input.mv_64x64_2Nx2N[0] & 0x0002; // new mv
+			dmv[1] = fme_input.mv_64x64_2Nx2N[1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 64, 64, dmv);
+			dmv[0] = fme_input.mv_64x64_2Nx2N[0] & 0x0001; // new mv
+			dmv[1] = fme_input.mv_64x64_2Nx2N[1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			uint32_t cost64x64 = calcRDSADCost(cur_pos[0], cur_pos[1], 64, 64, fme_input.mv_64x64_2Nx2N, min_index);
+			cost64x64_2Nx2N = cost64x64;
+		} break;
+		case SIZE_2NxN: {
+			cu_skip[0] = 0;
+			for (int blk = 0; blk < 2; blk++) {
+				mv[0] = fme_input.mv_64x64_2NxN[blk][0] & 0xfffc;
+				mv[1] = fme_input.mv_64x64_2NxN[blk][1] & 0xfffc;
+				cur_pos[0] = 0;
+				cur_pos[1] = 32 * blk;
+				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+				// half me
+				interpolate_h(ref_pos[0], ref_pos[1], 64, 32);
+				dmv[0] = fme_input.mv_64x64_2NxN[blk][0] & 0x0002; // new mv
+				dmv[1] = fme_input.mv_64x64_2NxN[blk][1] & 0x0002;
+				// quart me
+				interpolate_q(ref_pos[0], ref_pos[1], 64, 32, dmv);
+				dmv[0] = fme_input.mv_64x64_2NxN[blk][0] & 0x0001; // new mv
+				dmv[1] = fme_input.mv_64x64_2NxN[blk][1] & 0x0001;
+				min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+				uint32_t cost64x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 64, 32, fme_input.mv_64x64_2NxN[blk], min_index);
+				cost64x64_2NxN += cost64x32;
+			}
+		} break;
+		case SIZE_Nx2N: {
+			cu_skip[0] = 0;
+			for (int blk = 0; blk < 2; blk++) {
+				mv[0] = fme_input.mv_64x64_Nx2N[blk][0] & 0xfffc;
+				mv[1] = fme_input.mv_64x64_Nx2N[blk][1] & 0xfffc;
+				cur_pos[0] = 32 * blk;
+				cur_pos[1] = 0;
+				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+				// half me
+				interpolate_h(ref_pos[0], ref_pos[1], 32, 64);
+				dmv[0] = fme_input.mv_64x64_Nx2N[blk][0] & 0x0002;
+				dmv[1] = fme_input.mv_64x64_Nx2N[blk][1] & 0x0002;
+				// quart me
+				interpolate_q(ref_pos[0], ref_pos[1], 32, 64, dmv);
+				dmv[0] = fme_input.mv_64x64_Nx2N[blk][0] & 0x0001;
+				dmv[1] = fme_input.mv_64x64_Nx2N[blk][1] & 0x0001;
+				min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+				uint32_t cost32x64 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 64, fme_input.mv_64x64_Nx2N[blk], min_index);
+				cost64x64_Nx2N += cost32x64;
+			}
+		} break;
+		case 3:
+			for (int blk = 0; blk < 4; blk++) {
+				for (int splitmode = 0; splitmode < 4; splitmode++)
+					fme32x32cost(blk, splitmode);
+			}
+			break;
+		}
+	}
+
 }
 
 void FME::fme32x32cost(int blk32x32, int splitmode)
 {
-    int min_index;
-    switch (splitmode) {
-    case SIZE_2Nx2N: {
-        cu_skip[1 + blk32x32] = 0;
-        mv[0]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0xfffc;
-        mv[1]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0xfffc;
-        cur_pos[0]            = 32 * (blk32x32 % 2); // current pu position
-        cur_pos[1]            = 32 * (blk32x32 / 2);
-        ref_pos[0]            = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-        ref_pos[1]            = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-        // half me
-        interpolate_h(ref_pos[0], ref_pos[1], 32, 32);
-        dmv[0] = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0x0002; // new mv
-		dmv[1] = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0x0002;
-        // quart me
-        interpolate_q(ref_pos[0], ref_pos[1], 32, 32, dmv);
-		dmv[0] = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0x0001; // new mv
-		dmv[1] = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0x0001;
-        min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
-        uint32_t cost32x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 32, fme_input.mv_32x32_tmp[blk32x32][0][0], min_index);
-        cost32x32_2Nx2N[blk32x32] += cost32x32;
-    } break;
-    case SIZE_2NxN: {
-        cu_skip[1 + blk32x32] = 0;
-        for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0xfffc;
-            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0xfffc;
-            cur_pos[0] = 32 * (blk32x32 % 2);
-            cur_pos[1] = 32 * (blk32x32 / 2) + 16 * blk;
-            ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-            ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-            // half me
-            interpolate_h(ref_pos[0], ref_pos[1], 32, 16);
-            dmv[0] = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0x0002;
-			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0x0002;
-            // quart me
-            interpolate_q(ref_pos[0], ref_pos[1], 32, 16, dmv);
-			dmv[0] = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0x0001;
-			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0x0001;
-            min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            uint32_t cost32x16 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 16, fme_input.mv_32x32_tmp[blk32x32][2][blk], min_index);
-            cost32x32_2NxN[blk32x32] += cost32x16;
-        }
-    } break;
-    case SIZE_Nx2N: {
-        cu_skip[1 + blk32x32] = 0;
-        for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0xfffc;
-            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0xfffc;
-            cur_pos[0] = 32 * (blk32x32 % 2) + 16 * blk;
-            cur_pos[1] = 32 * (blk32x32 / 2);
-            ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-            ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-            // half me
-            interpolate_h(ref_pos[0], ref_pos[1], 16, 32);
-            dmv[0] = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0x0002;
-			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0x0002;
-            // quart me
-            interpolate_q(ref_pos[0], ref_pos[1], 16, 32, dmv);
-			dmv[0] = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0x0001;
-			dmv[1] = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0x0001;
-            min_index          = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            uint32_t cost16x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 32, fme_input.mv_32x32_tmp[blk32x32][1][blk], min_index);
-            cost32x32_Nx2N[blk32x32] += cost16x32;
-        }
-    } break;
-    case 3:
-        for (int blk = 0; blk < 4; blk++) {
-            for (int splitmode = 0; splitmode < 4; splitmode++)
-                fme16x16cost(blk32x32, blk, splitmode);
-        }
-        break;
-    }
+	int min_index;
+	switch (splitmode) {
+	case SIZE_2Nx2N: {
+		cu_skip[1 + blk32x32] = 0;
+		mv[0] = fme_input.mv_32x32_2Nx2N[blk32x32][0] & 0xfffc;
+		mv[1] = fme_input.mv_32x32_2Nx2N[blk32x32][1] & 0xfffc;
+		cur_pos[0] = 32 * (blk32x32 % 2); // current pu position
+		cur_pos[1] = 32 * (blk32x32 / 2);
+		ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+		ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+		// half me
+		interpolate_h(ref_pos[0], ref_pos[1], 32, 32);
+		dmv[0] = fme_input.mv_32x32_2Nx2N[blk32x32][0] & 0x0002; // new mv
+		dmv[1] = fme_input.mv_32x32_2Nx2N[blk32x32][1] & 0x0002;
+		// quart me
+		interpolate_q(ref_pos[0], ref_pos[1], 32, 32, dmv);
+		dmv[0] = fme_input.mv_32x32_2Nx2N[blk32x32][0] & 0x0001; // new mv
+		dmv[1] = fme_input.mv_32x32_2Nx2N[blk32x32][1] & 0x0001;
+		min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+		uint32_t cost32x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 32, fme_input.mv_32x32_2Nx2N[blk32x32], min_index);
+		cost32x32_2Nx2N[blk32x32] += cost32x32;
+	} break;
+	case SIZE_2NxN: {
+		cu_skip[1 + blk32x32] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_32x32_2NxN[blk32x32][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_32x32_2NxN[blk32x32][blk][1] & 0xfffc;
+			cur_pos[0] = 32 * (blk32x32 % 2);
+			cur_pos[1] = 32 * (blk32x32 / 2) + 16 * blk;
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 32, 16);
+			dmv[0] = fme_input.mv_32x32_2NxN[blk32x32][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_32x32_2NxN[blk32x32][blk][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 32, 16, dmv);
+			dmv[0] = fme_input.mv_32x32_2NxN[blk32x32][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_32x32_2NxN[blk32x32][blk][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			uint32_t cost32x16 = calcRDSADCost(cur_pos[0], cur_pos[1], 32, 16, fme_input.mv_32x32_2NxN[blk32x32][blk], min_index);
+			cost32x32_2NxN[blk32x32] += cost32x16;
+		}
+	} break;
+	case SIZE_Nx2N: {
+		cu_skip[1 + blk32x32] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_32x32_Nx2N[blk32x32][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_32x32_Nx2N[blk32x32][blk][1] & 0xfffc;
+			cur_pos[0] = 32 * (blk32x32 % 2) + 16 * blk;
+			cur_pos[1] = 32 * (blk32x32 / 2);
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 16, 32);
+			dmv[0] = fme_input.mv_32x32_Nx2N[blk32x32][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_32x32_Nx2N[blk32x32][blk][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 16, 32, dmv);
+			dmv[0] = fme_input.mv_32x32_Nx2N[blk32x32][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_32x32_Nx2N[blk32x32][blk][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			uint32_t cost16x32 = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 32, fme_input.mv_32x32_Nx2N[blk32x32][blk], min_index);
+			cost32x32_Nx2N[blk32x32] += cost16x32;
+		}
+	} break;
+	case 3:
+		for (int blk = 0; blk < 4; blk++) {
+			for (int splitmode = 0; splitmode < 4; splitmode++)
+				fme16x16cost(blk32x32, blk, splitmode);
+		}
+		break;
+	}
 }
 
 void FME::fme16x16cost(int blk32x32, int blk16x16, int splitmode)
 {
-    int min_index = 0;
-    switch (splitmode) {
-    case SIZE_2Nx2N: {
-        cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
-        mv[0]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0xfffc;
-        mv[1]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0xfffc;
-        cur_pos[0]                           = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
-        cur_pos[1]                           = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-        ref_pos[0]                           = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-        ref_pos[1]                           = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-        // half me
-        interpolate_h(ref_pos[0], ref_pos[1], 16, 16);
-        dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0x0002; // new mv
-		dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0x0002;
-        // quart me
-        interpolate_q(ref_pos[0], ref_pos[1], 16, 16, dmv);
-		dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0x0001; // new mv
-		dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0x0001;
-        min_index                           = (dmv[1] + 1) * 3 + dmv[0] + 1;
-        uint32_t cost16x16                  = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 16, fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0], min_index);
-        cost16x16_2Nx2N[blk32x32][blk16x16] = cost16x16;
-    } break;
-    case SIZE_2NxN: {
-        cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
-        for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0xfffc;
-            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0xfffc;
-            cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
-            cur_pos[1] = 8 * blk + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-            ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-            ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-            // half me
-            interpolate_h(ref_pos[0], ref_pos[1], 16, 8);
-            dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0x0002;
-			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0x0002;
-            // quart me
-            interpolate_q(ref_pos[0], ref_pos[1], 16, 8, dmv);
-			dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0x0001;
-			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0x0001;
-            min_index         = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            uint32_t cost16x8 = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 8, fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk], min_index);
-            cost16x16_2NxN[blk32x32][blk16x16] += cost16x8;
-        }
-    } break;
-    case SIZE_Nx2N: {
-        cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
-        for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0xfffc;
-            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0xfffc;
-            cur_pos[0] = 8 * blk + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
-            cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-            ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-            ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-            // half me
-            interpolate_h(ref_pos[0], ref_pos[1], 8, 16);
-            dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0x0002;
-			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0x0002;
-            // quart me
-            interpolate_q(ref_pos[0], ref_pos[1], 8, 16, dmv);
-            //cost16x16 += subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
-			dmv[0] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0x0001;
-			dmv[1] = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0x0001;
-            min_index         = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            uint32_t cost8x16 = calcRDSADCost(cur_pos[0], cur_pos[1], 8, 16, fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk], min_index);
-            cost16x16_Nx2N[blk32x32][blk16x16] += cost8x16;
-        }
-    } break;
-    case 3:
-        for (int blk = 0; blk < 4; blk++) {
-            fme8x8cost(blk32x32, blk16x16, blk);
-        }
-        break;
-    }
+	int min_index = 0;
+	switch (splitmode) {
+	case SIZE_2Nx2N: {
+		cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
+		mv[0] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][0] & 0xfffc;
+		mv[1] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][1] & 0xfffc;
+		cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
+		cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+		ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+		ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+		// half me
+		interpolate_h(ref_pos[0], ref_pos[1], 16, 16);
+		dmv[0] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][0] & 0x0002; // new mv
+		dmv[1] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][1] & 0x0002;
+		// quart me
+		interpolate_q(ref_pos[0], ref_pos[1], 16, 16, dmv);
+		dmv[0] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][0] & 0x0001; // new mv
+		dmv[1] = fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16][1] & 0x0001;
+		min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+		uint32_t cost16x16 = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 16, fme_input.mv_16x16_2Nx2N[blk32x32][blk16x16], min_index);
+		cost16x16_2Nx2N[blk32x32][blk16x16] = cost16x16;
+	} break;
+	case SIZE_2NxN: {
+		cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][1] & 0xfffc;
+			cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
+			cur_pos[1] = 8 * blk + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 16, 8);
+			dmv[0] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 16, 8, dmv);
+			dmv[0] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			uint32_t cost16x8 = calcRDSADCost(cur_pos[0], cur_pos[1], 16, 8, fme_input.mv_16x16_2NxN[blk32x32][blk16x16][blk], min_index);
+			cost16x16_2NxN[blk32x32][blk16x16] += cost16x8;
+		}
+	} break;
+	case SIZE_Nx2N: {
+		cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][1] & 0xfffc;
+			cur_pos[0] = 8 * blk + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
+			cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 8, 16);
+			dmv[0] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 8, 16, dmv);
+			//cost16x16 += subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
+			dmv[0] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			uint32_t cost8x16 = calcRDSADCost(cur_pos[0], cur_pos[1], 8, 16, fme_input.mv_16x16_Nx2N[blk32x32][blk16x16][blk], min_index);
+			cost16x16_Nx2N[blk32x32][blk16x16] += cost8x16;
+		}
+	} break;
+	case 3:
+		for (int blk = 0; blk < 4; blk++) {
+			for (int splitmode = 0; splitmode < 3; splitmode++)
+				fme8x8cost(blk32x32, blk16x16, blk, splitmode);
+		}
+		break;
+	}
 }
 
-void FME::fme8x8cost(int blk32x32, int blk16x16, int blk8x8)
-{
-    int min_index;
-    cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] = 0;
-    mv[0]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0xfffc;
-    mv[1]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0xfffc;
-    cur_pos[0]                                          = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
-    cur_pos[1]                                          = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-    ref_pos[0]                                          = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-    ref_pos[1]                                          = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-    // half me
-    interpolate_h(ref_pos[0], ref_pos[1], 8, 8);
-    dmv[0] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0x0002; // new mv
-	dmv[1] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0x0002;
-    // quart me
-    interpolate_q(ref_pos[0], ref_pos[1], 8, 8, dmv);
-	dmv[0] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0x0001; // new mv
-	dmv[1] = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0x0001;
-    min_index                                 = (dmv[1] + 1) * 3 + dmv[0] + 1;
-    uint32_t cost8x8                          = calcRDSADCost(cur_pos[0], cur_pos[1], 8, 8, fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0], min_index);
-    cost8x8_2Nx2N[blk32x32][blk16x16][blk8x8] = cost8x8;
+void FME::fme8x8cost(int blk32x32, int blk16x16, int blk8x8, int splitmode) {
+	int min_index;
+	switch (splitmode)
+	{
+	case SIZE_2Nx2N: {
+		mv[0] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][0] & 0xfffc;
+		mv[1] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][1] & 0xfffc;
+		cur_pos[0] = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
+		cur_pos[1] = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+		ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+		ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+		// half me
+		interpolate_h(ref_pos[0], ref_pos[1], 16, 16);
+		dmv[0] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][0] & 0x0002; // new mv
+		dmv[1] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][1] & 0x0002;
+		// quart me
+		interpolate_q(ref_pos[0], ref_pos[1], 16, 16, dmv);
+		dmv[0] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][0] & 0x0001; // new mv
+		dmv[1] = fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8][1] & 0x0001;
+		min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+		uint32_t cost8x8 = calcRDSADCost(cur_pos[0], cur_pos[1], 8, 8, fme_input.mv_8x8_2Nx2N[blk32x32][blk16x16][blk8x8], min_index);
+		cost8x8_2Nx2N[blk32x32][blk16x16][blk8x8] = cost8x8;
+	} break;
+	case SIZE_2NxN: {
+		cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][1] & 0xfffc;
+			cur_pos[0] = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
+			cur_pos[1] = 4 * blk + 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 16, 8);
+			dmv[0] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 16, 8, dmv);
+			dmv[0] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			uint32_t cost8x4 = calcRDSADCost(cur_pos[0], cur_pos[1], 8, 4, fme_input.mv_8x8_2NxN[blk32x32][blk16x16][blk8x8][blk], min_index);
+			cost8x8_2NxN[blk32x32][blk16x16][blk8x8] += cost8x4;
+		}
+	} break;
+	case SIZE_Nx2N: {
+		cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
+		for (int blk = 0; blk < 2; blk++) {
+			mv[0] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][0] & 0xfffc;
+			mv[1] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][1] & 0xfffc;
+			cur_pos[0] = 4 * blk + 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
+			cur_pos[1] = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 8, 16);
+			dmv[0] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][0] & 0x0002;
+			dmv[1] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][1] & 0x0002;
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 8, 16, dmv);
+			//cost16x16 += subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
+			dmv[0] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][0] & 0x0001;
+			dmv[1] = fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk][1] & 0x0001;
+			min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+			uint32_t cost4x8 = calcRDSADCost(cur_pos[0], cur_pos[1], 4, 8, fme_input.mv_8x8_Nx2N[blk32x32][blk16x16][blk8x8][blk], min_index);
+			cost8x8_Nx2N[blk32x32][blk16x16][blk8x8] += cost4x8;
+		}
+	} break;
+	default:
+		break;
+	}
 }
 
-void FME::fmepartition()
-{
-    int part_x;
-    int part_y;
-    //===========cu8x8===============
-    for (int blk32x32 = 0; blk32x32 < 4; blk32x32++)
-        for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
-            for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-                fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_2Nx2N;
+void FME::fmepartition() {
+	int part_x;
+	int part_y;
+	//===========cu8x8===============
+	for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
+		for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
+			for (int blk8x8 = 0; blk8x8 < 4; blk8x8++) {
+				fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_2Nx2N;
+				cost8x8_min[blk32x32][blk16x16][blk8x8] = cost8x8_2Nx2N[blk32x32][blk16x16][blk8x8];
+				/*//test SIZE_Nx2N
+				if (cost8x8_Nx2N[blk32x32][blk16x16][blk8x8] < cost8x8_min[blk32x32][blk16x16][blk8x8]) {
+					cost8x8_min[blk32x32][blk16x16][blk8x8] = cost8x8_Nx2N[blk32x32][blk16x16][blk8x8];
+					fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_Nx2N;
+				}
+				//test SIZE_2NxN
+				if (cost8x8_2NxN[blk32x32][blk16x16][blk8x8] < cost8x8_min[blk32x32][blk16x16][blk8x8]) {
+					cost8x8_min[blk32x32][blk16x16][blk8x8] = cost8x8_2NxN[blk32x32][blk16x16][blk8x8];
+					fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_2NxN;
+				}*/
+			}
+		}
+	}
+	//===========cu16x16===============
+	for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
+		for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
+			fme_input.cu_16x16_mode[blk32x32][blk16x16] = SPLIT;
+			for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+				cost16x16_min[blk32x32][blk16x16] += cost8x8_min[blk32x32][blk16x16][blk8x8]; //assume 16x16 best is added up by 8x8 best
+			part_x = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
+			part_y = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
+			if (!((is_x_Boundry && ((part_x + 15) > x_Boundry)) || (is_y_Boundry && ((part_y + 15) > y_Boundry)))) {
+				//test SIZE_Nx2N
+				if (cost16x16_Nx2N[blk32x32][blk16x16] <= cost16x16_min[blk32x32][blk16x16]) {
+					cost16x16_min[blk32x32][blk16x16] = cost16x16_Nx2N[blk32x32][blk16x16];
+					fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_Nx2N;
+					//clear
+					for (int blk = 0; blk < 2; blk++)
+						for (int blk8x8 = 0; blk8x8 < 2; blk8x8++)
+							fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8 * 2 + blk] = SIZE_NONE;
+				}
+				//test SIZE_2NxN
+				if (cost16x16_2NxN[blk32x32][blk16x16] <= cost16x16_min[blk32x32][blk16x16]) {
+					cost16x16_min[blk32x32][blk16x16] = cost16x16_2NxN[blk32x32][blk16x16];
+					fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_2NxN;
+					//clear
+					for (int blk = 0; blk < 2; blk++)
+						for (int blk8x8 = 0; blk8x8 < 2; blk8x8++)
+							fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8 + blk * 2] = SIZE_NONE;
+				}
+				//test SIZE_2Nx2N
+				if (cost16x16_2Nx2N[blk32x32][blk16x16] <= cost16x16_min[blk32x32][blk16x16]) {
+					cost16x16_min[blk32x32][blk16x16] = cost16x16_2Nx2N[blk32x32][blk16x16];
+					fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_2Nx2N;
+					//clear
+					for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+						fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_NONE; //downsize mode = size_none]
+				}
+			}
+		}
+	}
 
-    //===========cu16x16===============
-    for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
-        for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
-            fme_input.cu_16x16_mode[blk32x32][blk16x16] = SPLIT;
-            for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-                cost16x16_min[blk32x32][blk16x16] += cost8x8_2Nx2N[blk32x32][blk16x16][blk8x8]; //assume 16x16 best is added up by 8x8 best
-            part_x = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
-            part_y = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-            if (!((is_x_Boundry && ((part_x + 15) > x_Boundry)) || (is_y_Boundry && ((part_y + 15) > y_Boundry)))) {
-                //test SIZE_Nx2N
-                if (cost16x16_Nx2N[blk32x32][blk16x16] <= cost16x16_min[blk32x32][blk16x16]) {
-                    cost16x16_min[blk32x32][blk16x16]           = cost16x16_Nx2N[blk32x32][blk16x16];
-                    fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_Nx2N;
-                    //clear
-                    for (int blk = 0; blk < 2; blk++)
-                        for (int blk8x8 = 0; blk8x8 < 2; blk8x8++)
-                            fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8 * 2 + blk] = SIZE_NONE;
-                }
-                //test SIZE_2NxN
-                if (cost16x16_2NxN[blk32x32][blk16x16] <= cost16x16_min[blk32x32][blk16x16]) {
-                    cost16x16_min[blk32x32][blk16x16]           = cost16x16_2NxN[blk32x32][blk16x16];
-                    fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_2NxN;
-                    //clear
-                    for (int blk = 0; blk < 2; blk++)
-                        for (int blk8x8 = 0; blk8x8 < 2; blk8x8++)
-                            fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8 + blk * 2] = SIZE_NONE;
-                }
-                //test SIZE_2Nx2N
-                if (cost16x16_2Nx2N[blk32x32][blk16x16] <= cost16x16_min[blk32x32][blk16x16]) {
-                    cost16x16_min[blk32x32][blk16x16]           = cost16x16_2Nx2N[blk32x32][blk16x16];
-                    fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_2Nx2N;
-                    //clear
-                    for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-                        fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_NONE; //downsize mode = size_none]
-                }
-            }
-        }
-    }
+	//===========cu32x32===============
 
-    //===========cu32x32===============
+	for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
+		fme_input.cu_32x32_mode[blk32x32] = SPLIT; //assume spliting is the best
+		for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
+			cost32x32_min[blk32x32] += cost16x16_min[blk32x32][blk16x16]; //assume 32x32 best is added up by 16x16 best
 
-    for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
-        fme_input.cu_32x32_mode[blk32x32] = SPLIT; //assume spliting is the best
-        for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
-            cost32x32_min[blk32x32] += cost16x16_min[blk32x32][blk16x16]; //assume 32x32 best is added up by 16x16 best
+		part_x = 32 * (blk32x32 % 2);
+		part_y = 32 * (blk32x32 / 2);
+		if (!((is_x_Boundry && ((part_x + 31) > x_Boundry)) || (is_y_Boundry && ((part_y + 31) > y_Boundry)))) {
+			//test SIZE_Nx2N
+			if (cost32x32_Nx2N[blk32x32] <= cost32x32_min[blk32x32]) {
+				cost32x32_min[blk32x32] = cost32x32_Nx2N[blk32x32];
+				fme_input.cu_32x32_mode[blk32x32] = SIZE_Nx2N;
+				//clear
+				for (int blk = 0; blk < 2; blk++) {
+					for (int blk16x16 = 0; blk16x16 < 2; blk16x16++) {
+						fme_input.cu_16x16_mode[blk32x32][blk16x16 * 2 + blk] = SIZE_NONE; //downsize mode = size_none
+						for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+							fme_input.cu_8x8_mode[blk32x32][blk16x16 * 2 + blk][blk8x8] = SIZE_NONE;
+					}
+				}
+			}
+			//test SIZE_2NxN
+			if (cost32x32_2NxN[blk32x32] <= cost32x32_min[blk32x32]) {
+				cost32x32_min[blk32x32] = cost32x32_2NxN[blk32x32];
+				fme_input.cu_32x32_mode[blk32x32] = SIZE_2NxN;
+				//clear
+				for (int blk = 0; blk < 2; blk++) {
+					for (int blk16x16 = 0; blk16x16 < 2; blk16x16++) {
+						fme_input.cu_16x16_mode[blk32x32][blk16x16 + blk * 2] = SIZE_NONE; //downsize mode = size_none
+						for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+							fme_input.cu_8x8_mode[blk32x32][blk16x16 + blk * 2][blk8x8] = SIZE_NONE;
+					}
+				}
+			}
 
-        part_x = 32 * (blk32x32 % 2);
-        part_y = 32 * (blk32x32 / 2);
-        if (!((is_x_Boundry && ((part_x + 31) > x_Boundry)) || (is_y_Boundry && ((part_y + 31) > y_Boundry)))) {
-            //test SIZE_Nx2N
-            if (cost32x32_Nx2N[blk32x32] <= cost32x32_min[blk32x32]) {
-                cost32x32_min[blk32x32]           = cost32x32_Nx2N[blk32x32];
-                fme_input.cu_32x32_mode[blk32x32] = SIZE_Nx2N;
-                //clear
-                for (int blk = 0; blk < 2; blk++) {
-                    for (int blk16x16 = 0; blk16x16 < 2; blk16x16++) {
-                        fme_input.cu_16x16_mode[blk32x32][blk16x16 * 2 + blk] = SIZE_NONE; //downsize mode = size_none
-                        for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-                            fme_input.cu_8x8_mode[blk32x32][blk16x16 * 2 + blk][blk8x8] = SIZE_NONE;
-                    }
-                }
-            }
-            //test SIZE_2NxN
-            if (cost32x32_2NxN[blk32x32] <= cost32x32_min[blk32x32]) {
-                cost32x32_min[blk32x32]           = cost32x32_2NxN[blk32x32];
-                fme_input.cu_32x32_mode[blk32x32] = SIZE_2NxN;
-                //clear
-                for (int blk = 0; blk < 2; blk++) {
-                    for (int blk16x16 = 0; blk16x16 < 2; blk16x16++) {
-                        fme_input.cu_16x16_mode[blk32x32][blk16x16 + blk * 2] = SIZE_NONE; //downsize mode = size_none
-                        for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-                            fme_input.cu_8x8_mode[blk32x32][blk16x16 + blk * 2][blk8x8] = SIZE_NONE;
-                    }
-                }
-            }
+			//test SIZE_2Nx2N
+			if (cost32x32_2Nx2N[blk32x32] <= cost32x32_min[blk32x32]) {
+				cost32x32_min[blk32x32] = cost32x32_2Nx2N[blk32x32];
+				fme_input.cu_32x32_mode[blk32x32] = SIZE_2Nx2N;
+				//clear
+				for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
+					fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_NONE; //downsize mode = size_none
+					for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+						fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_NONE; //downsize mode = size_none
+				}
+			}
+		}
+	}
+	//===========cu64x64===============
 
-            //test SIZE_2Nx2N
-            if (cost32x32_2Nx2N[blk32x32] <= cost32x32_min[blk32x32]) {
-                cost32x32_min[blk32x32]           = cost32x32_2Nx2N[blk32x32];
-                fme_input.cu_32x32_mode[blk32x32] = SIZE_2Nx2N;
-                //clear
-                for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
-                    fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_NONE; //downsize mode = size_none
-                    for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-                        fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_NONE; //downsize mode = size_none
-                }
-            }
-        }
-    }
-    //===========cu64x64===============
+	fme_input.cu_64x64_mode = SPLIT; //assume spliting is the best
+	for (int blk32x32 = 0; blk32x32 < 4; blk32x32++)
+		cost64x64_min += cost32x32_min[blk32x32]; //assume 64x64 best is added up by 32x32 best
 
-    fme_input.cu_64x64_mode = SPLIT; //assume spliting is the best
-    for (int blk32x32 = 0; blk32x32 < 4; blk32x32++)
-        cost64x64_min += cost32x32_min[blk32x32]; //assume 64x64 best is added up by 32x32 best
-
-    part_x = 0;
-    part_y = 0;
-    if (!((is_x_Boundry && ((part_x + 63) > x_Boundry)) || (is_y_Boundry && ((part_y + 63) > y_Boundry)))) {
-        //test SIZE_Nx2N
-        if (cost64x64_Nx2N <= cost64x64_min) {
-            cost64x64_min           = cost64x64_Nx2N;
-            fme_input.cu_64x64_mode = SIZE_Nx2N;
-            //clear
-            for (int blk = 0; blk < 2; blk++) {
-                for (int blk32x32 = 0; blk32x32 < 2; blk32x32++) {
-                    fme_input.cu_32x32_mode[blk32x32 * 2 + blk] = SIZE_NONE;
-                    for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
-                        fme_input.cu_16x16_mode[blk32x32 * 2 + blk][blk16x16] = SIZE_NONE; //downsize mode = size_none
-                        for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-                            fme_input.cu_8x8_mode[blk32x32 * 2 + blk][blk16x16][blk8x8] = SIZE_NONE;
-                    }
-                }
-            }
-        }
-        //test SIZE_2NxN
-        if (cost64x64_2NxN <= cost64x64_min) {
-            cost64x64_min           = cost64x64_2NxN;
-            fme_input.cu_64x64_mode = SIZE_2NxN;
-            //clear
-            for (int blk = 0; blk < 2; blk++) {
-                for (int blk32x32 = 0; blk32x32 < 2; blk32x32++) {
-                    fme_input.cu_32x32_mode[blk32x32 + blk * 2] = SIZE_NONE;
-                    for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
-                        fme_input.cu_16x16_mode[blk32x32 + blk * 2][blk16x16] = SIZE_NONE; //downsize mode = size_none
-                        for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-                            fme_input.cu_8x8_mode[blk32x32 + blk * 2][blk16x16][blk8x8] = SIZE_NONE;
-                    }
-                }
-            }
-        }
-        //test SIZE_2Nx2N
-        if (cost64x64_2Nx2N <= cost64x64_min) {
-            cost64x64_min           = cost64x64_2Nx2N;
-            fme_input.cu_64x64_mode = SIZE_2Nx2N;
-            //clear
-            for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
-                fme_input.cu_32x32_mode[blk32x32] = SIZE_NONE; //downsize mode = size_none
-                for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
-                    fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_NONE; //downsize mode = size_none
-                    for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-                        fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_NONE; //downsize mode = size_none
-                }
-            }
-        }
-    }
+	part_x = 0;
+	part_y = 0;
+	if (!((is_x_Boundry && ((part_x + 63) > x_Boundry)) || (is_y_Boundry && ((part_y + 63) > y_Boundry)))) {
+		//test SIZE_Nx2N
+		if (cost64x64_Nx2N <= cost64x64_min) {
+			cost64x64_min = cost64x64_Nx2N;
+			fme_input.cu_64x64_mode = SIZE_Nx2N;
+			//clear
+			for (int blk = 0; blk < 2; blk++) {
+				for (int blk32x32 = 0; blk32x32 < 2; blk32x32++) {
+					fme_input.cu_32x32_mode[blk32x32 * 2 + blk] = SIZE_NONE;
+					for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
+						fme_input.cu_16x16_mode[blk32x32 * 2 + blk][blk16x16] = SIZE_NONE; //downsize mode = size_none
+						for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+							fme_input.cu_8x8_mode[blk32x32 * 2 + blk][blk16x16][blk8x8] = SIZE_NONE;
+					}
+				}
+			}
+		}
+		//test SIZE_2NxN
+		if (cost64x64_2NxN <= cost64x64_min) {
+			cost64x64_min = cost64x64_2NxN;
+			fme_input.cu_64x64_mode = SIZE_2NxN;
+			//clear
+			for (int blk = 0; blk < 2; blk++) {
+				for (int blk32x32 = 0; blk32x32 < 2; blk32x32++) {
+					fme_input.cu_32x32_mode[blk32x32 + blk * 2] = SIZE_NONE;
+					for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
+						fme_input.cu_16x16_mode[blk32x32 + blk * 2][blk16x16] = SIZE_NONE; //downsize mode = size_none
+						for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+							fme_input.cu_8x8_mode[blk32x32 + blk * 2][blk16x16][blk8x8] = SIZE_NONE;
+					}
+				}
+			}
+		}
+		//test SIZE_2Nx2N
+		if (cost64x64_2Nx2N <= cost64x64_min) {
+			cost64x64_min = cost64x64_2Nx2N;
+			fme_input.cu_64x64_mode = SIZE_2Nx2N;
+			//clear
+			for (int blk32x32 = 0; blk32x32 < 4; blk32x32++) {
+				fme_input.cu_32x32_mode[blk32x32] = SIZE_NONE; //downsize mode = size_none
+				for (int blk16x16 = 0; blk16x16 < 4; blk16x16++) {
+					fme_input.cu_16x16_mode[blk32x32][blk16x16] = SIZE_NONE; //downsize mode = size_none
+					for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+						fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8] = SIZE_NONE; //downsize mode = size_none
+				}
+			}
+		}
+	}
 }
 
-void FME::fmectu()
-{
-    // do fme
-    int min_index;
-    switch (fme_input.cu_64x64_mode) {
-    case SIZE_2Nx2N:
-        if (fme_input.x != 0 && cu_skip[0] == 1) {
-            mv[0] = mv_store[2 / 2 * 4 + 2 / 2 * 2 + 2 / 2][7][1][0]; // merge idx=0 2%2*4+2%2*2+2%2-1
-            mv[1] = mv_store[2 / 2 * 4 + 2 / 2 * 2 + 2 / 2][7][1][1]; // merge idx=0 2%2*4+2%2*2+2%2-1
-        } else {
-            cu_skip[0] = 0;
-            mv[0]      = fme_input.mv_64x64_tmp[0][0][0] & 0xfffc;
-            mv[1]      = fme_input.mv_64x64_tmp[0][0][1] & 0xfffc;
-        }
-        cur_pos[0] = 0; // current pu position
-        cur_pos[1] = 0;
-        ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-        ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-        // half me
-        interpolate_h(ref_pos[0], ref_pos[1], 64, 64);
-        if (cu_skip[0] == 1) {
-            dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) / 2;
-            dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) / 2;
-            dmv[0] = dmv[0] * 2;
-            dmv[1] = dmv[1] * 2;
-        } else {
-            cost = subpel_me(cur_pos[0], cur_pos[1], 64, 64, mv, dmv, 1);
-            mv[0] += dmv[0]; // new mv
-            mv[1] += dmv[1];
-        }
-        // quart me
-        interpolate_q(ref_pos[0], ref_pos[1], 64, 64, dmv);
-        if (cu_skip[0] == 1) {
-            dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) % 2;
-            dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) % 2;
-        } else {
-            cost = subpel_me(cur_pos[0], cur_pos[1], 64, 64, mv, dmv, 0);
-            mv[0] += dmv[0]; // new mv
-            mv[1] += dmv[1];
-        }
-        // copy min cost pixel to reconstruct pu
-        min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-        pixel_copy_WxH(64, 64, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
-        // update fmv
-        for (int blk32x32 = 0; blk32x32 < 4; blk32x32++)
-            for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
-                for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-                    for (int i = 0; i < 2; i++)
-                        for (int k = 0; k < 2; k++) {
-                            fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k]                                                               = mv[k];
-                            mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
-                            fmecost[blk32x32][blk16x16][blk8x8][i]                                                                             = cost;
-                        }
-        break;
-    case SIZE_2NxN:
-        cu_skip[0] = 0;
-        for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_64x64_tmp[2][blk][0] & 0xfffc;
-            mv[1]      = fme_input.mv_64x64_tmp[2][blk][1] & 0xfffc;
-            cur_pos[0] = 0;
-            cur_pos[1] = 32 * blk;
-            ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-            ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-            // half me
-            interpolate_h(ref_pos[0], ref_pos[1], 64, 32);
-            subpel_me(cur_pos[0], cur_pos[1], 64, 32, mv, dmv, 1);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // quart me
-            interpolate_q(ref_pos[0], ref_pos[1], 64, 32, dmv);
-            uint32_t cost64x32 = subpel_me(cur_pos[0], cur_pos[1], 64, 32, mv, dmv, 0);
-            cost += cost64x32;
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // copy min cost pixel to reconstruct pu
-            min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            pixel_copy_WxH(32, 64, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
-            // update fmv
-            for (int blk32x32 = 0; blk32x32 < 2; blk32x32++)
-                for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
-                    for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-                        for (int i = 0; i < 2; i++)
-                            for (int k = 0; k < 2; k++) {
-                                fme_output.fmv_8x8[blk32x32 + blk * 2][blk16x16][blk8x8][i][k]                                                     = mv[k];
-                                mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
-                                fmecost[blk32x32 + blk * 2][blk16x16][blk8x8][i]                                                                   = cost64x32;
-                            }
-        }
-        break;
-    case SIZE_Nx2N:
-        cu_skip[0] = 0;
-        for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_64x64_tmp[1][blk][0] & 0xfffc;
-            mv[1]      = fme_input.mv_64x64_tmp[1][blk][1] & 0xfffc;
-            cur_pos[0] = 32 * blk;
-            cur_pos[1] = 0;
-            ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-            ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-            // half me
-            interpolate_h(ref_pos[0], ref_pos[1], 32, 64);
-            subpel_me(cur_pos[0], cur_pos[1], 32, 64, mv, dmv, 1);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // quart me
-            interpolate_q(ref_pos[0], ref_pos[1], 32, 64, dmv);
-            uint32_t cost32x64 = subpel_me(cur_pos[0], cur_pos[1], 32, 64, mv, dmv, 0);
-            cost += cost32x64;
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // copy min cost pixel to reconstruct pu
-            min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            pixel_copy_WxH(64, 32, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
-            // update fmv
-            for (int blk32x32 = 0; blk32x32 < 2; blk32x32++)
-                for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
-                    for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
-                        for (int i = 0; i < 2; i++)
-                            for (int k = 0; k < 2; k++) {
-                                fme_output.fmv_8x8[blk32x32 * 2 + blk][blk16x16][blk8x8][i][k]                                                     = mv[k];
-                                mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
-                                fmecost[blk32x32 * 2 + blk][blk16x16][blk8x8][i]                                                                   = cost32x64;
-                            }
-        }
-        break;
-    case SPLIT:
-        for (int blk = 0; blk < 4; blk++) {
-            cost += fme32x32(blk);
-        }
-        break;
-    }
+void FME::fmectu() {
+	switch (fme_input.cu_64x64_mode) {
+	case SIZE_2Nx2N:
+		uint32_t cost64x64;
+		min_cost = COST_MAX;
+
+		if (fme_input.x != 0 && cu_skip[0] == 1) {
+			imv[0] = mv_store[2 / 2 * 4 + 2 / 2 * 2 + 2 / 2][7][1][0]; // merge idx=0 2%2*4+2%2*2+2%2-1
+			imv[1] = mv_store[2 / 2 * 4 + 2 / 2 * 2 + 2 / 2][7][1][1]; // merge idx=0 2%2*4+2%2*2+2%2-1
+		}
+		else {
+			cu_skip[0] = 0;
+			imv[0] = fme_input.mv_8x8[0][0][0][0][0];
+			imv[1] = fme_input.mv_8x8[0][0][0][0][1];
+		}
+
+		mvp_compute64x64();
+
+		cur_pos[0] = 0; // current pu position
+		cur_pos[1] = 0;
+		mvc[0][0] = imv[0]; mvc[0][1] = imv[1];
+		mvc[1][0] = (mvp_a_8x8[0][0][0][0] >> 2) << 2; mvc[1][1] = (mvp_a_8x8[0][0][0][1] >> 2) << 2;
+		mvc[2][0] = (mvp_b_8x8[0][0][0][0] >> 2) << 2; mvc[2][1] = (mvp_b_8x8[0][0][0][1] >> 2) << 2;
+
+		for (int i = 0; i < 3; i++) {  //search ime, mvp_a, mvp_b
+			mv[0] = mvc[i][0];
+			mv[1] = mvc[i][1];
+
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 64, 64);
+			if (cu_skip[0] == 1) {
+				dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) / 2;
+				dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) / 2;
+				dmv[0] = dmv[0] * 2;
+				dmv[1] = dmv[1] * 2;
+			}
+			else {
+				cost64x64 = subpel_me(cur_pos[0], cur_pos[1], 64, 64, mv, dmv, 1);
+				mv[0] += dmv[0]; // new mv
+				mv[1] += dmv[1];
+			}
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 64, 64, dmv);
+			if (cu_skip[0] == 1) {
+				dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) % 2;
+				dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) % 2;
+			}
+			else {
+				cost64x64 = subpel_me(cur_pos[0], cur_pos[1], 64, 64, mv, dmv, 0);
+				mv[0] += dmv[0]; // new mv
+				mv[1] += dmv[1];
+			}
+			if (cost64x64 < min_cost) {
+				// copy min cost pixel to reconstruct pu
+				min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+				pixel_copy_WxH(64, 64, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+				min_cost = cost64x64;
+				bmv[0] = mv[0];
+				bmv[1] = mv[1];
+			}
+		}
+
+		cost += min_cost;
+
+		// update fmv
+		for (int blk32x32 = 0; blk32x32 < 4; blk32x32++)
+			for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
+				for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+					for (int i = 0; i < 2; i++)
+						for (int k = 0; k < 2; k++) {
+							fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k] = bmv[k];
+							mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = bmv[k];
+							fmecost[blk32x32][blk16x16][blk8x8][i] = min_cost;
+							int x = (blk32x32 % 2) * 8 + (blk16x16 % 2) * 4 + (blk8x8 % 2) * 2 + 1;
+							int y = (blk32x32 / 2) * 8 + (blk16x16 / 2) * 4 + (blk8x8 / 2) * 2 + 1;
+							// As you should know, mv_cache is base on 4x4 block.
+							mv_cache[y][x][k] = bmv[k];
+							mv_cache[y][x + 1][k] = bmv[k];
+							mv_cache[y + 1][x][k] = bmv[k];
+							mv_cache[y + 1][x + 1][k] = bmv[k];
+						}
+
+		break;
+	case SIZE_2NxN:
+		cu_skip[0] = 0;
+		uint32_t cost64x32;
+
+		for (int blk = 0; blk < 2; blk++) {
+			min_cost = COST_MAX;
+
+			imv[0] = fme_input.mv_8x8[blk * 2][0][0][0][0];
+			imv[1] = fme_input.mv_8x8[blk * 2][0][0][0][1];
+
+			mvp_compute64x32(blk);
+
+			cur_pos[0] = 0;
+			cur_pos[1] = 32 * blk;
+			mvc[0][0] = imv[0]; mvc[0][1] = imv[1];
+			mvc[1][0] = (mvp_a_8x8[blk * 2][0][0][0] >> 2) << 2; mvc[1][1] = (mvp_a_8x8[blk * 2][0][0][1] >> 2) << 2;
+			mvc[2][0] = (mvp_b_8x8[blk * 2][0][0][0] >> 2) << 2; mvc[2][1] = (mvp_b_8x8[blk * 2][0][0][1] >> 2) << 2;
+
+			for (int i = 0; i < 3; i++) {  //search ime, mvp_a, mvp_b
+				mv[0] = mvc[i][0];
+				mv[1] = mvc[i][1];
+
+				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+				// half me
+				interpolate_h(ref_pos[0], ref_pos[1], 64, 32);
+				subpel_me(cur_pos[0], cur_pos[1], 64, 32, mv, dmv, 1);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				// quart me
+				interpolate_q(ref_pos[0], ref_pos[1], 64, 32, dmv);
+				cost64x32 = subpel_me(cur_pos[0], cur_pos[1], 64, 32, mv, dmv, 0);
+
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				if (cost64x32 < min_cost) {
+					// copy min cost pixel to reconstruct pu
+					min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+					pixel_copy_WxH(32, 64, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+					min_cost = cost64x32;
+					bmv[0] = mv[0];
+					bmv[1] = mv[1];
+				}
+			}
+
+			cost += min_cost;
+
+			// update fmv
+			for (int blk32x32 = 0; blk32x32 < 2; blk32x32++)
+				for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
+					for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+						for (int i = 0; i < 2; i++)
+							for (int k = 0; k < 2; k++) {
+								fme_output.fmv_8x8[blk32x32 + blk * 2][blk16x16][blk8x8][i][k] = bmv[k];
+								mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = bmv[k];
+								fmecost[blk32x32 + blk * 2][blk16x16][blk8x8][i] = min_cost;
+								int x = ((blk32x32 + blk * 2) % 2) * 8 + (blk16x16 % 2) * 4 + (blk8x8 % 2) * 2 + 1;
+								int y = ((blk32x32 + blk * 2) / 2) * 8 + (blk16x16 / 2) * 4 + (blk8x8 / 2) * 2 + 1;
+								// As you should know, mv_cache is base on 4x4 block.
+								mv_cache[y][x][k] = bmv[k];
+								mv_cache[y][x + 1][k] = bmv[k];
+								mv_cache[y + 1][x][k] = bmv[k];
+								mv_cache[y + 1][x + 1][k] = bmv[k];
+							}
+		}
+		break;
+	case SIZE_Nx2N:
+		cu_skip[0] = 0;
+		uint32_t cost32x64;
+
+		for (int blk = 0; blk < 2; blk++) {
+			min_cost = COST_MAX;
+
+			imv[0] = fme_input.mv_8x8[blk][0][0][0][0];
+			imv[1] = fme_input.mv_8x8[blk][0][0][0][1];
+
+			mvp_compute32x64(blk);
+
+			cur_pos[0] = 32 * blk;
+			cur_pos[1] = 0;
+			mvc[0][0] = imv[0]; mvc[0][1] = imv[1];
+			mvc[1][0] = (mvp_a_8x8[blk][0][0][0] >> 2) << 2; mvc[1][1] = (mvp_a_8x8[blk][0][0][1] >> 2) << 2;
+			mvc[2][0] = (mvp_b_8x8[blk][0][0][0] >> 2) << 2; mvc[2][1] = (mvp_b_8x8[blk][0][0][1] >> 2) << 2;
+
+			for (int i = 0; i < 3; i++) {  //search ime, mvp_a, mvp_b
+				mv[0] = mvc[i][0];
+				mv[1] = mvc[i][1];
+
+				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+				// half me
+				interpolate_h(ref_pos[0], ref_pos[1], 32, 64);
+				subpel_me(cur_pos[0], cur_pos[1], 32, 64, mv, dmv, 1);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				// quart me
+				interpolate_q(ref_pos[0], ref_pos[1], 32, 64, dmv);
+				cost32x64 = subpel_me(cur_pos[0], cur_pos[1], 32, 64, mv, dmv, 0);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				if (cost32x64 < min_cost) {
+					// copy min cost pixel to reconstruct pu
+					min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+					pixel_copy_WxH(64, 32, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+					min_cost = cost32x64;
+					bmv[0] = mv[0];
+					bmv[1] = mv[1];
+				}
+			}
+
+			cost += min_cost;
+
+			// update fmv
+			for (int blk32x32 = 0; blk32x32 < 2; blk32x32++)
+				for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
+					for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
+						for (int i = 0; i < 2; i++)
+							for (int k = 0; k < 2; k++) {
+								fme_output.fmv_8x8[blk32x32 * 2 + blk][blk16x16][blk8x8][i][k] = bmv[k];
+								mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = bmv[k];
+								fmecost[blk32x32 * 2 + blk][blk16x16][blk8x8][i] = min_cost;
+								int x = ((blk32x32 * 2 + blk) % 2) * 8 + (blk16x16 % 2) * 4 + (blk8x8 % 2) * 2 + 1;
+								int y = ((blk32x32 * 2 + blk) / 2) * 8 + (blk16x16 / 2) * 4 + (blk8x8 / 2) * 2 + 1;
+								// As you should know, mv_cache is base on 4x4 block.
+								mv_cache[y][x][k] = bmv[k];
+								mv_cache[y][x + 1][k] = bmv[k];
+								mv_cache[y + 1][x][k] = bmv[k];
+								mv_cache[y + 1][x + 1][k] = bmv[k];
+							}
+		}
+		break;
+	case SPLIT:
+		for (int blk = 0; blk < 4; blk++) {
+			cost += fme32x32(blk);
+		}
+		break;
+	}
 }
 
 int32_t FME::fme32x32(int blk32x32)
 {
-    uint32_t cost32x32 = 0;
-    int      min_index;
-
+	uint32_t bcost32x32 = 0;
     switch (fme_input.cu_32x32_mode[blk32x32]) {
     case SIZE_2Nx2N:
+		uint32_t cost32x32;
+		min_cost = COST_MAX;
+
         if (fme_input.x != 0 && cu_skip[1 + blk32x32] == 1) {
-            mv[0] = (blk32x32 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + 2 / 2 * 2 + 2 / 2][7][1][0] : mv_store[blk32x32 / 2 * 4 + 2 / 2 * 2 + 2 / 2][blk32x32 % 2 * 4 + 2 % 2 * 2 + 2 % 2 - 1][1][0]; //merge idx=0
-            mv[1] = (blk32x32 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + 2 / 2 * 2 + 2 / 2][7][1][1] : mv_store[blk32x32 / 2 * 4 + 2 / 2 * 2 + 2 / 2][blk32x32 % 2 * 4 + 2 % 2 * 2 + 2 % 2 - 1][1][1]; //merge idx=0
+            imv[0] = (blk32x32 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + 2 / 2 * 2 + 2 / 2][7][1][0] : mv_store[blk32x32 / 2 * 4 + 2 / 2 * 2 + 2 / 2][blk32x32 % 2 * 4 + 2 % 2 * 2 + 2 % 2 - 1][1][0]; //merge idx=0
+            imv[1] = (blk32x32 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + 2 / 2 * 2 + 2 / 2][7][1][1] : mv_store[blk32x32 / 2 * 4 + 2 / 2 * 2 + 2 / 2][blk32x32 % 2 * 4 + 2 % 2 * 2 + 2 % 2 - 1][1][1]; //merge idx=0
         } else {
             cu_skip[1 + blk32x32] = 0;
-            mv[0]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][0] & 0xfffc;
-            mv[1]                 = fme_input.mv_32x32_tmp[blk32x32][0][0][1] & 0xfffc;
+            imv[0]                 = fme_input.mv_8x8[blk32x32][0][0][0][0];
+            imv[1]                 = fme_input.mv_8x8[blk32x32][0][0][0][1];
         }
-        cur_pos[0] = 32 * (blk32x32 % 2); // current pu position
+
+		mvp_compute32x32(blk32x32);
+
+		cur_pos[0] = 32 * (blk32x32 % 2); // current pu position
         cur_pos[1] = 32 * (blk32x32 / 2);
-        ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-        ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-        // half me
-        interpolate_h(ref_pos[0], ref_pos[1], 32, 32);
-        if (cu_skip[1 + blk32x32] == 1) {
-            dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) / 2;
-            dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) / 2;
-            dmv[0] = dmv[0] * 2;
-            dmv[1] = dmv[1] * 2;
-        } else {
-            cost32x32 = subpel_me(cur_pos[0], cur_pos[1], 32, 32, mv, dmv, 1);
-            mv[0] += dmv[0]; // new mv
-            mv[1] += dmv[1];
-        }
-        // quart me
-        interpolate_q(ref_pos[0], ref_pos[1], 32, 32, dmv);
-        if (cu_skip[1 + blk32x32] == 1) {
-            dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) % 2;
-            dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) % 2;
-        } else {
-            cost32x32 = subpel_me(cur_pos[0], cur_pos[1], 32, 32, mv, dmv, 0);
-            mv[0] += dmv[0]; // new mv
-            mv[1] += dmv[1];
-        }
-        // copy min cost pixel to reconstruct pu
-        min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-        pixel_copy_WxH(32, 32, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+		mvc[0][0] = imv[0]; mvc[0][1] = imv[1];
+		mvc[1][0] = (mvp_a_8x8[blk32x32][0][0][0] >> 2) << 2; mvc[1][1] = (mvp_a_8x8[blk32x32][0][0][1] >> 2) << 2;
+		mvc[2][0] = (mvp_b_8x8[blk32x32][0][0][0] >> 2) << 2; mvc[2][1] = (mvp_b_8x8[blk32x32][0][0][1] >> 2) << 2;
+
+		for (int i = 0; i < 3; i++) {  //search ime, mvp_a, mvp_b
+			mv[0] = mvc[i][0];
+			mv[1] = mvc[i][1];
+
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 32, 32);
+			if (cu_skip[1 + blk32x32] == 1) {
+				dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) / 2;
+				dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) / 2;
+				dmv[0] = dmv[0] * 2;
+				dmv[1] = dmv[1] * 2;
+			}
+			else {
+				cost32x32 = subpel_me(cur_pos[0], cur_pos[1], 32, 32, mv, dmv, 1);
+				mv[0] += dmv[0]; // new mv
+				mv[1] += dmv[1];
+			}
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 32, 32, dmv);
+			if (cu_skip[1 + blk32x32] == 1) {
+				dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) % 2;
+				dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) % 2;
+			}
+			else {
+				cost32x32 = subpel_me(cur_pos[0], cur_pos[1], 32, 32, mv, dmv, 0);
+				mv[0] += dmv[0]; // new mv
+				mv[1] += dmv[1];
+			}
+			if (cost32x32 < min_cost) {
+				// copy min cost pixel to reconstruct pu
+				min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+				pixel_copy_WxH(32, 32, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+				min_cost = cost32x32;
+				bmv[0] = mv[0];
+				bmv[1] = mv[1];
+			}
+		}
+
+		bcost32x32 += min_cost;
+
         // update fmv
         for (int blk16x16 = 0; blk16x16 < 4; blk16x16++)
             for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
                 for (int i = 0; i < 2; i++)
                     for (int k = 0; k < 2; k++) {
-                        fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k]                                                               = mv[k];
-                        mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
-                        fmecost[blk32x32][blk16x16][blk8x8][i]                                                                             = cost32x32;
+                        fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k]                                                               = bmv[k];
+                        mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = bmv[k];
+                        fmecost[blk32x32][blk16x16][blk8x8][i] = min_cost;
+						int x = (blk32x32 % 2) * 8 + (blk16x16 % 2) * 4 + (blk8x8 % 2) * 2 + 1;
+						int y = (blk32x32 / 2) * 8 + (blk16x16 / 2) * 4 + (blk8x8 / 2) * 2 + 1;
+						// As you should know, mv_cache is base on 4x4 block.
+						mv_cache[y][x][k] = bmv[k];
+						mv_cache[y][x + 1][k] = bmv[k];
+						mv_cache[y + 1][x][k] = bmv[k];
+						mv_cache[y + 1][x + 1][k] = bmv[k];
                     }
         break;
     case SIZE_2NxN:
         cu_skip[1 + blk32x32] = 0;
+		uint32_t cost32x16;
+
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][0] & 0xfffc;
-            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][2][blk][1] & 0xfffc;
+			min_cost = COST_MAX;
+
+            imv[0]      = fme_input.mv_8x8[blk32x32][blk * 2][0][0][0];
+            imv[1]      = fme_input.mv_8x8[blk32x32][blk * 2][0][0][1];
+
+			mvp_compute32x16(blk32x32,blk);
+
             cur_pos[0] = 32 * (blk32x32 % 2);
             cur_pos[1] = 32 * (blk32x32 / 2) + 16 * blk;
-            ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-            ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-            // half me
-            interpolate_h(ref_pos[0], ref_pos[1], 32, 16);
-            subpel_me(cur_pos[0], cur_pos[1], 32, 16, mv, dmv, 1);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // quart me
-            interpolate_q(ref_pos[0], ref_pos[1], 32, 16, dmv);
-            uint32_t cost32x16 = subpel_me(cur_pos[0], cur_pos[1], 32, 16, mv, dmv, 0);
-            cost32x32 += cost32x16;
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // copy min cost pixel to reconstruct pu
-            min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            pixel_copy_WxH(16, 32, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+			mvc[0][0] = imv[0]; mvc[0][1] = imv[1];
+			mvc[1][0] = (mvp_a_8x8[blk32x32][blk * 2][0][0] >> 2) << 2; mvc[1][1] = (mvp_a_8x8[blk32x32][blk * 2][0][1] >> 2) << 2;
+			mvc[2][0] = (mvp_b_8x8[blk32x32][blk * 2][0][0] >> 2) << 2; mvc[2][1] = (mvp_b_8x8[blk32x32][blk * 2][0][1] >> 2) << 2;
+
+			for (int i = 0; i < 3; i++) {  //search ime, mvp_a, mvp_b
+				mv[0] = mvc[i][0];
+				mv[1] = mvc[i][1];
+
+				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+				// half me
+				interpolate_h(ref_pos[0], ref_pos[1], 32, 16);
+				subpel_me(cur_pos[0], cur_pos[1], 32, 16, mv, dmv, 1);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				// quart me
+				interpolate_q(ref_pos[0], ref_pos[1], 32, 16, dmv);
+				cost32x16 = subpel_me(cur_pos[0], cur_pos[1], 32, 16, mv, dmv, 0);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+
+				if (cost32x16 < min_cost) {
+					// copy min cost pixel to reconstruct pu
+					min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+					pixel_copy_WxH(16, 32, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+					min_cost = cost32x16;
+					bmv[0] = mv[0];
+					bmv[1] = mv[1];
+				}
+			}
+
+			bcost32x32 += min_cost;
+
             // update fmv
             for (int blk16x16 = 0; blk16x16 < 2; blk16x16++)
                 for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
                     for (int i = 0; i < 2; i++)
                         for (int k = 0; k < 2; k++) {
-                            fme_output.fmv_8x8[blk32x32][blk16x16 + blk * 2][blk8x8][i][k]                                                                             = mv[k];
-                            mv_store[blk32x32 / 2 * 4 + (blk * 2 + blk16x16) / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + (blk * 2 + blk16x16) % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
-                            fmecost[blk32x32][blk16x16 + blk * 2][blk8x8][i]                                                                                           = cost32x16;
+                            fme_output.fmv_8x8[blk32x32][blk16x16 + blk * 2][blk8x8][i][k]                                                                             = bmv[k];
+                            mv_store[blk32x32 / 2 * 4 + (blk * 2 + blk16x16) / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + (blk * 2 + blk16x16) % 2 * 2 + blk8x8 % 2][i][k] = bmv[k];
+                            fmecost[blk32x32][blk16x16 + blk * 2][blk8x8][i] = min_cost;
+							int x = (blk32x32 % 2) * 8 + ((blk16x16 + blk * 2) % 2) * 4 + (blk8x8 % 2) * 2 + 1;
+							int y = (blk32x32 / 2) * 8 + ((blk16x16 + blk * 2) / 2) * 4 + (blk8x8 / 2) * 2 + 1;
+							// As you should know, mv_cache is base on 4x4 block.
+							mv_cache[y][x][k] = bmv[k];
+							mv_cache[y][x + 1][k] = bmv[k];
+							mv_cache[y + 1][x][k] = bmv[k];
+							mv_cache[y + 1][x + 1][k] = bmv[k];
                         }
         }
         break;
     case SIZE_Nx2N:
         cu_skip[1 + blk32x32] = 0;
+		uint32_t cost16x32;
+
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][0] & 0xfffc;
-            mv[1]      = fme_input.mv_32x32_tmp[blk32x32][1][blk][1] & 0xfffc;
+			min_cost = COST_MAX;
+
+            imv[0]      = fme_input.mv_8x8[blk32x32][blk][0][0][0];
+            imv[1]      = fme_input.mv_8x8[blk32x32][blk][0][0][1];
+
+			mvp_compute16x32(blk32x32, blk);
+
             cur_pos[0] = 32 * (blk32x32 % 2) + 16 * blk;
             cur_pos[1] = 32 * (blk32x32 / 2);
-            ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-            ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-            // half me
-            interpolate_h(ref_pos[0], ref_pos[1], 16, 32);
-            subpel_me(cur_pos[0], cur_pos[1], 16, 32, mv, dmv, 1);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // quart me
-            interpolate_q(ref_pos[0], ref_pos[1], 16, 32, dmv);
-            uint32_t cost16x32 = subpel_me(cur_pos[0], cur_pos[1], 16, 32, mv, dmv, 0);
-            cost32x32 += cost16x32;
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // copy min cost pixel to reconstruct pu
-            min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            pixel_copy_WxH(32, 16, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+
+			mvc[0][0] = imv[0]; mvc[0][1] = imv[1];
+			mvc[1][0] = (mvp_a_8x8[blk32x32][blk][0][0] >> 2) << 2; mvc[1][1] = (mvp_a_8x8[blk32x32][blk][0][1] >> 2) << 2;
+			mvc[2][0] = (mvp_b_8x8[blk32x32][blk][0][0] >> 2) << 2; mvc[2][1] = (mvp_b_8x8[blk32x32][blk][0][1] >> 2) << 2;
+
+			for (int i = 0; i < 3; i++) {  //search ime, mvp_a, mvp_b
+				mv[0] = mvc[i][0];
+				mv[1] = mvc[i][1];
+
+				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+				// half me
+				interpolate_h(ref_pos[0], ref_pos[1], 16, 32);
+				subpel_me(cur_pos[0], cur_pos[1], 16, 32, mv, dmv, 1);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				// quart me
+				interpolate_q(ref_pos[0], ref_pos[1], 16, 32, dmv);
+				cost16x32 = subpel_me(cur_pos[0], cur_pos[1], 16, 32, mv, dmv, 0);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				if (cost16x32 < min_cost) {
+					// copy min cost pixel to reconstruct pu
+					min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+					pixel_copy_WxH(32, 16, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+					min_cost = cost16x32;
+					bmv[0] = mv[0];
+					bmv[1] = mv[1];
+				}
+			}
+
+			bcost32x32 += min_cost;
+
             // update fmv
             for (int blk16x16 = 0; blk16x16 < 2; blk16x16++)
                 for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
                     for (int i = 0; i < 2; i++)
                         for (int k = 0; k < 2; k++) {
-                            fme_output.fmv_8x8[blk32x32][blk16x16 * 2 + blk][blk8x8][i][k]                                                                             = mv[k];
-                            mv_store[blk32x32 / 2 * 4 + (blk16x16 * 2 + blk) / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + (blk16x16 * 2 + blk) % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
-                            fmecost[blk32x32][blk16x16 * 2 + blk][blk8x8][i]                                                                                           = cost16x32;
+                            fme_output.fmv_8x8[blk32x32][blk16x16 * 2 + blk][blk8x8][i][k]                                                                             = bmv[k];
+                            mv_store[blk32x32 / 2 * 4 + (blk16x16 * 2 + blk) / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + (blk16x16 * 2 + blk) % 2 * 2 + blk8x8 % 2][i][k] = bmv[k];
+                            fmecost[blk32x32][blk16x16 * 2 + blk][blk8x8][i] = min_cost;
+							int x = (blk32x32 % 2) * 8 + ((blk16x16 * 2 + blk) % 2) * 4 + (blk8x8 % 2) * 2 + 1;
+							int y = (blk32x32 / 2) * 8 + ((blk16x16 * 2 + blk) / 2) * 4 + (blk8x8 / 2) * 2 + 1;
+							// As you should know, mv_cache is base on 4x4 block.
+							mv_cache[y][x][k] = bmv[k];
+							mv_cache[y][x + 1][k] = bmv[k];
+							mv_cache[y + 1][x][k] = bmv[k];
+							mv_cache[y + 1][x + 1][k] = bmv[k];
                         }
         }
         break;
     case SPLIT:
         for (int blk = 0; blk < 4; blk++) {
-            cost32x32 += fme16x16(blk32x32, blk);
+            bcost32x32 += fme16x16(blk32x32, blk);
         }
         break;
     }
-    return cost32x32;
+    return bcost32x32;
 }
 
 int32_t FME::fme16x16(int blk32x32, int blk16x16)
 {
-    uint32_t cost16x16 = 0;
-    int      min_index;
+	uint32_t bcost16x16 = 0;
 
     switch (fme_input.cu_16x16_mode[blk32x32][blk16x16]) {
     case SIZE_2Nx2N:
+		uint32_t cost16x16;
+		min_cost = COST_MAX;
+
         if (fme_input.x != 0 && cu_skip[5 + blk32x32 * 4 + blk16x16] == 1) {
-            mv[0] = (blk32x32 % 2 == 0 && blk16x16 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + 2 / 2][7][1][0] : mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + 2 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + 2 % 2 - 1][1][0]; //merge idx=0
-            mv[1] = (blk32x32 % 2 == 0 && blk16x16 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + 2 / 2][7][1][1] : mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + 2 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + 2 % 2 - 1][1][1]; //merge idx=0
+            imv[0] = (blk32x32 % 2 == 0 && blk16x16 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + 2 / 2][7][1][0] : mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + 2 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + 2 % 2 - 1][1][0]; //merge idx=0
+            imv[1] = (blk32x32 % 2 == 0 && blk16x16 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + 2 / 2][7][1][1] : mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + 2 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + 2 % 2 - 1][1][1]; //merge idx=0
         } else {
             cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
-            mv[0]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][0] & 0xfffc;
-            mv[1]                                = fme_input.mv_16x16_tmp[blk32x32][blk16x16][0][0][1] & 0xfffc;
+            imv[0]                                = fme_input.mv_8x8[blk32x32][blk16x16][0][0][0];
+            imv[1]                                = fme_input.mv_8x8[blk32x32][blk16x16][0][0][1];
         }
+
+		mvp_compute16x16(blk32x32, blk16x16);
+
         cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
         cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-        ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-        ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-        // half me
-        interpolate_h(ref_pos[0], ref_pos[1], 16, 16);
-        if (cu_skip[5 + blk32x32 * 4 + blk16x16] == 1) {
-            dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) / 2;
-            dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) / 2;
-            dmv[0] = dmv[0] * 2;
-            dmv[1] = dmv[1] * 2;
-        } else {
-            cost16x16 = subpel_me(cur_pos[0], cur_pos[1], 16, 16, mv, dmv, 1);
-            mv[0] += dmv[0]; // new mv
-            mv[1] += dmv[1];
-        }
-        // quart me
-        interpolate_q(ref_pos[0], ref_pos[1], 16, 16, dmv);
-        if (cu_skip[5 + blk32x32 * 4 + blk16x16] == 1) {
-            dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) % 2;
-            dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) % 2;
-        } else {
-            cost16x16 = subpel_me(cur_pos[0], cur_pos[1], 16, 16, mv, dmv, 0);
-            mv[0] += dmv[0]; // new mv
-            mv[1] += dmv[1];
-        }
-        // copy min cost pixel to reconstruct pu
-        min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-        pixel_copy_WxH(16, 16, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+		mvc[0][0] = imv[0]; mvc[0][1] = imv[1];
+		mvc[1][0] = (mvp_a_8x8[blk32x32][blk16x16][0][0] >> 2) << 2; mvc[1][1] = (mvp_a_8x8[blk32x32][blk16x16][0][1] >> 2) << 2;
+		mvc[2][0] = (mvp_b_8x8[blk32x32][blk16x16][0][0] >> 2) << 2; mvc[2][1] = (mvp_b_8x8[blk32x32][blk16x16][0][1] >> 2) << 2;
+
+		for (int i = 0; i < 3; i++) {  //search ime, mvp_a, mvp_b
+			mv[0] = mvc[i][0];
+			mv[1] = mvc[i][1];
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 16, 16);
+			if (cu_skip[5 + blk32x32 * 4 + blk16x16] == 1) {
+				dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) / 2;
+				dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) / 2;
+				dmv[0] = dmv[0] * 2;
+				dmv[1] = dmv[1] * 2;
+			}
+			else {
+				cost16x16 = subpel_me(cur_pos[0], cur_pos[1], 16, 16, mv, dmv, 1);
+				mv[0] += dmv[0]; // new mv
+				mv[1] += dmv[1];
+			}
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 16, 16, dmv);
+			if (cu_skip[5 + blk32x32 * 4 + blk16x16] == 1) {
+				dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) % 2;
+				dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) % 2;
+			}
+			else {
+				cost16x16 = subpel_me(cur_pos[0], cur_pos[1], 16, 16, mv, dmv, 0);
+				mv[0] += dmv[0]; // new mv
+				mv[1] += dmv[1];
+			}
+			if (cost16x16 < min_cost) {
+				// copy min cost pixel to reconstruct pu
+				min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+				pixel_copy_WxH(16, 16, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+				min_cost = cost16x16;
+				bmv[0] = mv[0];
+				bmv[1] = mv[1];
+			}
+		}
+
+		bcost16x16 += min_cost;
+
         // update fmv
         for (int blk8x8 = 0; blk8x8 < 4; blk8x8++)
             for (int i = 0; i < 2; i++)
                 for (int k = 0; k < 2; k++) {
-                    fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k]                                                               = mv[k];
-                    mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
-                    fmecost[blk32x32][blk16x16][blk8x8][i]                                                                             = cost16x16;
+                    fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k]                                                               = bmv[k];
+                    mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = bmv[k];
+                    fmecost[blk32x32][blk16x16][blk8x8][i] = min_cost;
+					int x = (blk32x32 % 2) * 8 + (blk16x16 % 2) * 4 + (blk8x8 % 2) * 2 + 1;
+					int y = (blk32x32 / 2) * 8 + (blk16x16 / 2) * 4 + (blk8x8 / 2) * 2 + 1;
+					// As you should know, mv_cache is base on 4x4 block.
+					mv_cache[y][x][k] = bmv[k];
+					mv_cache[y][x + 1][k] = bmv[k];
+					mv_cache[y + 1][x][k] = bmv[k];
+					mv_cache[y + 1][x + 1][k] = bmv[k];
                 }
         break;
     case SIZE_2NxN:
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
+		uint32_t cost16x8;
+
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][0] & 0xfffc;
-            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][2][blk][1] & 0xfffc;
+			min_cost = COST_MAX;
+
+            imv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk * 2][0][0];
+            imv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk * 2][0][1];
+
+			mvp_compute16x8(blk32x32, blk16x16, blk);
+
             cur_pos[0] = 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 8 * blk + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-            ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-            ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-            // half me
-            interpolate_h(ref_pos[0], ref_pos[1], 16, 8);
-            subpel_me(cur_pos[0], cur_pos[1], 16, 8, mv, dmv, 1);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // quart me
-            interpolate_q(ref_pos[0], ref_pos[1], 16, 8, dmv);
-            uint32_t cost16x8 = subpel_me(cur_pos[0], cur_pos[1], 16, 8, mv, dmv, 0);
-            cost16x16 += cost16x8;
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // copy min cost pixel to reconstruct pu
-            min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            pixel_copy_WxH(8, 16, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+			mvc[0][0] = imv[0]; mvc[0][1] = imv[1];
+			mvc[1][0] = (mvp_a_8x8[blk32x32][blk16x16][blk * 2][0] >> 2) << 2; mvc[1][1] = (mvp_a_8x8[blk32x32][blk16x16][blk * 2][1] >> 2) << 2;
+			mvc[2][0] = (mvp_b_8x8[blk32x32][blk16x16][blk * 2][0] >> 2) << 2; mvc[2][1] = (mvp_b_8x8[blk32x32][blk16x16][blk * 2][1] >> 2) << 2;
+
+			for (int i = 0; i < 3; i++) {  //search ime, mvp_a, mvp_b
+				mv[0] = mvc[i][0];
+				mv[1] = mvc[i][1];
+
+				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+				// half me
+				interpolate_h(ref_pos[0], ref_pos[1], 16, 8);
+				subpel_me(cur_pos[0], cur_pos[1], 16, 8, mv, dmv, 1);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				// quart me
+				interpolate_q(ref_pos[0], ref_pos[1], 16, 8, dmv);
+				cost16x8 = subpel_me(cur_pos[0], cur_pos[1], 16, 8, mv, dmv, 0);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				if (cost16x8 < min_cost) {
+					// copy min cost pixel to reconstruct pu
+					min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+					pixel_copy_WxH(8, 16, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+					min_cost = cost16x8;
+					bmv[0] = mv[0];
+					bmv[1] = mv[1];
+				}
+			}
+
+			bcost16x16 += min_cost;
+
             // update fmv
             for (int blk8x8 = 0; blk8x8 < 2; blk8x8++)
                 for (int i = 0; i < 2; i++)
                     for (int k = 0; k < 2; k++) {
-                        fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 + blk * 2][i][k]                                                                             = mv[k];
-                        mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + (blk8x8 + blk * 2) / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + (blk8x8 + blk * 2) % 2][i][k] = mv[k];
-                        fmecost[blk32x32][blk16x16][blk8x8 + blk * 2][i]                                                                                           = cost16x8;
+                        fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 + blk * 2][i][k]                                                                             = bmv[k];
+                        mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + (blk8x8 + blk * 2) / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + (blk8x8 + blk * 2) % 2][i][k] = bmv[k];
+                        fmecost[blk32x32][blk16x16][blk8x8 + blk * 2][i] = min_cost;
+						int x = (blk32x32 % 2) * 8 + (blk16x16 % 2) * 4 + ((blk8x8 + blk * 2) % 2) * 2 + 1;
+						int y = (blk32x32 / 2) * 8 + (blk16x16 / 2) * 4 + ((blk8x8 + blk * 2) / 2) * 2 + 1;
+						// As you should know, mv_cache is base on 4x4 block.
+						mv_cache[y][x][k] = bmv[k];
+						mv_cache[y][x + 1][k] = bmv[k];
+						mv_cache[y + 1][x][k] = bmv[k];
+						mv_cache[y + 1][x + 1][k] = bmv[k];
                     }
         }
         break;
     case SIZE_Nx2N:
         cu_skip[5 + blk32x32 * 4 + blk16x16] = 0;
+		uint32_t cost8x16;
+
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][0] & 0xfffc;
-            mv[1]      = fme_input.mv_16x16_tmp[blk32x32][blk16x16][1][blk][1] & 0xfffc;
+			min_cost = COST_MAX;
+
+            imv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk][0][0];
+            imv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk][0][1];
+
+			mvp_compute8x16(blk32x32, blk16x16, blk);
+
             cur_pos[0] = 8 * blk + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-            ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-            ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-            // half me
-            interpolate_h(ref_pos[0], ref_pos[1], 8, 16);
-            subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 1);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // quart me
-            interpolate_q(ref_pos[0], ref_pos[1], 8, 16, dmv);
-            //cost16x16 += subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
-            uint32_t cost8x16 = subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
-            cost16x16 += cost8x16;
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // copy min cost pixel to reconstruct pu
-            min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            pixel_copy_WxH(16, 8, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+
+			mvc[0][0] = imv[0]; mvc[0][1] = imv[1];
+			mvc[1][0] = (mvp_a_8x8[blk32x32][blk16x16][blk][0] >> 2) << 2; mvc[1][1] = (mvp_a_8x8[blk32x32][blk16x16][blk][1] >> 2) << 2;
+			mvc[2][0] = (mvp_b_8x8[blk32x32][blk16x16][blk][0] >> 2) << 2; mvc[2][1] = (mvp_b_8x8[blk32x32][blk16x16][blk][1] >> 2) << 2;
+
+			for (int i = 0; i < 3; i++) {  //search ime, mvp_a, mvp_b
+				mv[0] = mvc[i][0];
+				mv[1] = mvc[i][1];
+
+				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+				// half me
+				interpolate_h(ref_pos[0], ref_pos[1], 8, 16);
+				subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 1);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				// quart me
+				interpolate_q(ref_pos[0], ref_pos[1], 8, 16, dmv);
+				//cost16x16 += subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
+				cost8x16 = subpel_me(cur_pos[0], cur_pos[1], 8, 16, mv, dmv, 0);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				if (cost8x16 < min_cost) {
+					// copy min cost pixel to reconstruct pu
+					min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+					pixel_copy_WxH(16, 8, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+					min_cost = cost8x16;
+					bmv[0] = mv[0];
+					bmv[1] = mv[1];
+				}
+			}
+
+			bcost16x16 += min_cost;
+
             // update fmv
             for (int blk8x8 = 0; blk8x8 < 2; blk8x8++)
                 for (int i = 0; i < 2; i++)
                     for (int k = 0; k < 2; k++) {
-                        fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 * 2 + blk][i][k]                                                                             = mv[k];
-                        mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + (blk8x8 * 2 + blk) / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + (blk8x8 * 2 + blk) % 2][i][k] = mv[k];
-                        fmecost[blk32x32][blk16x16][blk8x8 * 2 + blk][i]                                                                                           = cost8x16;
+                        fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 * 2 + blk][i][k]                                                                             = bmv[k];
+                        mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + (blk8x8 * 2 + blk) / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + (blk8x8 * 2 + blk) % 2][i][k] = bmv[k];
+                        fmecost[blk32x32][blk16x16][blk8x8 * 2 + blk][i] = min_cost;
+						int x = (blk32x32 % 2) * 8 + (blk16x16 % 2) * 4 + ((blk8x8 * 2 + blk) % 2) * 2 + 1;
+						int y = (blk32x32 / 2) * 8 + (blk16x16 / 2) * 4 + ((blk8x8 * 2 + blk) / 2) * 2 + 1;
+						// As you should know, mv_cache is base on 4x4 block.
+						mv_cache[y][x][k] = bmv[k];
+						mv_cache[y][x + 1][k] = bmv[k];
+						mv_cache[y + 1][x][k] = bmv[k];
+						mv_cache[y + 1][x + 1][k] = bmv[k];
                     }
         }
         break;
     case SPLIT:
         for (int blk = 0; blk < 4; blk++) {
-            cost16x16 += fme8x8(blk32x32, blk16x16, blk);
+			bcost16x16 += fme8x8(blk32x32, blk16x16, blk);
         }
         break;
     }
-    return cost16x16;
+    return bcost16x16;
 }
 
 int32_t FME::fme8x8(int blk32x32, int blk16x16, int blk8x8)
 {
-    uint32_t cost8x8 = 0;
-    int      min_index;
+	uint32_t bcost8x8 = 0;
 
     switch (fme_input.cu_8x8_mode[blk32x32][blk16x16][blk8x8]) {
     case SIZE_2Nx2N:
+		uint32_t cost8x8;
+		min_cost = COST_MAX;
+
         if (fme_input.x != 0 && cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] == 1) {
-            mv[0] = (blk32x32 % 2 == 0 && blk16x16 % 2 == 0 && blk8x8 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][7][1][0] : mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2 - 1][1][0]; //merge idx=0
-            mv[1] = (blk32x32 % 2 == 0 && blk16x16 % 2 == 0 && blk8x8 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][7][1][1] : mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2 - 1][1][1]; //merge idx=0
+            imv[0] = (blk32x32 % 2 == 0 && blk16x16 % 2 == 0 && blk8x8 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][7][1][0] : mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2 - 1][1][0]; //merge idx=0
+            imv[1] = (blk32x32 % 2 == 0 && blk16x16 % 2 == 0 && blk8x8 % 2 == 0) ? mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][7][1][1] : mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2 - 1][1][1]; //merge idx=0
         } else {
             cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] = 0;
-            mv[0]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][0] & 0xfffc;
-            mv[1]                                               = fme_input.mv_8x8_tmp[blk32x32][blk16x16][blk8x8][0][0][1] & 0xfffc;
+            imv[0]                                               = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][0][0];
+            imv[1]                                               = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][0][1];
         }
+
+		mvp_compute8x8(blk32x32, blk16x16, blk8x8);
+
         cur_pos[0] = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2); // current pu position
         cur_pos[1] = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-        ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-        ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-        // half me
-        interpolate_h(ref_pos[0], ref_pos[1], 8, 8);
-        if (cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] == 1) {
-            dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) / 2;
-            dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) / 2;
-            dmv[0] = dmv[0] * 2;
-            dmv[1] = dmv[1] * 2;
-        } else {
-            cost8x8 = subpel_me(cur_pos[0], cur_pos[1], 8, 8, mv, dmv, 1);
-            mv[0] += dmv[0]; // new mv
-            mv[1] += dmv[1];
-        }
-        // quart me
-        interpolate_q(ref_pos[0], ref_pos[1], 8, 8, dmv);
-        if (cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] == 1) {
-            dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) % 2;
-            dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) % 2;
-        } else {
-            cost8x8 = subpel_me(cur_pos[0], cur_pos[1], 8, 8, mv, dmv, 0);
-            mv[0] += dmv[0]; // new mv
-            mv[1] += dmv[1];
-        }
-        // copy min cost pixel to reconstruct pu
-        min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-        pixel_copy_WxH(8, 8, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+
+		mvc[0][0] = imv[0]; mvc[0][1] = imv[1];
+		mvc[1][0] = (mvp_a_8x8[blk32x32][blk16x16][blk8x8][0] >> 2) << 2; mvc[1][1] = (mvp_a_8x8[blk32x32][blk16x16][blk8x8][1] >> 2) << 2;
+		mvc[2][0] = (mvp_b_8x8[blk32x32][blk16x16][blk8x8][0] >> 2) << 2; mvc[2][1] = (mvp_b_8x8[blk32x32][blk16x16][blk8x8][1] >> 2) << 2;
+
+		for (int i = 0; i < 3; i++) {  //search ime, mvp_a, mvp_b
+			mv[0] = mvc[i][0];
+			mv[1] = mvc[i][1];
+
+			ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+			ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+			// half me
+			interpolate_h(ref_pos[0], ref_pos[1], 8, 8);
+			if (cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] == 1) {
+				dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) / 2;
+				dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) / 2;
+				dmv[0] = dmv[0] * 2;
+				dmv[1] = dmv[1] * 2;
+			}
+			else {
+				cost8x8 = subpel_me(cur_pos[0], cur_pos[1], 8, 8, mv, dmv, 1);
+				mv[0] += dmv[0]; // new mv
+				mv[1] += dmv[1];
+			}
+			// quart me
+			interpolate_q(ref_pos[0], ref_pos[1], 8, 8, dmv);
+			if (cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] == 1) {
+				dmv[0] = (mv[0] - ((mv[0] >> 2) << 2)) % 2;
+				dmv[1] = (mv[1] - ((mv[1] >> 2) << 2)) % 2;
+			}
+			else {
+				cost8x8 = subpel_me(cur_pos[0], cur_pos[1], 8, 8, mv, dmv, 0);
+				mv[0] += dmv[0]; // new mv
+				mv[1] += dmv[1];
+			}
+			if (cost8x8 < min_cost) {
+				// copy min cost pixel to reconstruct pu
+				min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+				pixel_copy_WxH(8, 8, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+				min_cost = cost8x8;
+				bmv[0] = mv[0];
+				bmv[1] = mv[1];
+			}
+		}
+
+		bcost8x8 += min_cost;
+
         // update fmv
         for (int i = 0; i < 2; i++)
             for (int k = 0; k < 2; k++) {
-                fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k]                                                               = mv[k];
-                mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = mv[k];
-                fmecost[blk32x32][blk16x16][blk8x8][i]                                                                             = cost8x8;
-            }
+                fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][i][k]                                                               = bmv[k];
+                mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][i][k] = bmv[k];
+                fmecost[blk32x32][blk16x16][blk8x8][i] = min_cost;
+				int x = (blk32x32 % 2) * 8 + (blk16x16 % 2) * 4 + (blk8x8 % 2) * 2 + 1;
+				int y = (blk32x32 / 2) * 8 + (blk16x16 / 2) * 4 + (blk8x8 / 2) * 2 + 1;
+				// As you should know, mv_cache is base on 4x4 block.
+				mv_cache[y][x][k] = bmv[k];
+				mv_cache[y][x + 1][k] = bmv[k];
+				mv_cache[y + 1][x][k] = bmv[k];
+				mv_cache[y + 1][x + 1][k] = bmv[k];
+			}
         break;
     case SIZE_2NxN:
         cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] = 0;
+		uint32_t cost8x4;
+
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][0] & 0xfffc;
-            mv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][1] & 0xfffc;
+			min_cost = COST_MAX;
+
+            imv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][0];
+            imv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][1];
+
+			mvp_compute8x4(blk32x32, blk16x16, blk8x8, blk);
+
             cur_pos[0] = 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 4 * blk + 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-            ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-            ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-            // half me
-            interpolate_h(ref_pos[0], ref_pos[1], 8, 4);
-            subpel_me(cur_pos[0], cur_pos[1], 8, 4, mv, dmv, 1);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // quart me
-            interpolate_q(ref_pos[0], ref_pos[1], 8, 4, dmv);
-            //cost8x8 += subpel_me(cur_pos[0], cur_pos[1], 8, 4, mv, dmv, 0);
-            uint32_t cost8x4 = subpel_me(cur_pos[0], cur_pos[1], 8, 4, mv, dmv, 0);
-            cost8x8 += cost8x4;
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // copy min cost pixel to reconstruct pu
-            min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            pixel_copy_WxH(4, 8, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+			mvc[0][0] = imv[0]; mvc[0][1] = imv[1];
+			mvc[1][0] = (mvp_a_8x8[blk32x32][blk16x16][blk8x8][0] >> 2) << 2; mvc[1][1] = (mvp_a_8x8[blk32x32][blk16x16][blk8x8][1] >> 2) << 2;
+			mvc[2][0] = (mvp_b_8x8[blk32x32][blk16x16][blk8x8][0] >> 2) << 2; mvc[2][1] = (mvp_b_8x8[blk32x32][blk16x16][blk8x8][1] >> 2) << 2;
+
+			for (int i = 0; i < 3; i++) {  //search ime, mvp_a, mvp_b
+				mv[0] = mvc[i][0];
+				mv[1] = mvc[i][1];
+				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+				// half me
+				interpolate_h(ref_pos[0], ref_pos[1], 8, 4);
+				subpel_me(cur_pos[0], cur_pos[1], 8, 4, mv, dmv, 1);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				// quart me
+				interpolate_q(ref_pos[0], ref_pos[1], 8, 4, dmv);
+				//cost8x8 += subpel_me(cur_pos[0], cur_pos[1], 8, 4, mv, dmv, 0);
+				cost8x4 = subpel_me(cur_pos[0], cur_pos[1], 8, 4, mv, dmv, 0);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				if (cost8x4 < min_cost) {
+					// copy min cost pixel to reconstruct pu
+					min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+					pixel_copy_WxH(4, 8, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+					min_cost = cost8x4;
+					bmv[0] = mv[0];
+					bmv[1] = mv[1];
+				}
+			}
+
+			bcost8x8 += min_cost;
+
             // update fmv
             for (int k = 0; k < 2; k++) {
-                fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][blk][k]                                                               = mv[k];
-                mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][blk][k] = mv[k];
-                fmecost[blk32x32][blk16x16][blk8x8][blk]                                                                             = cost8x4;
+                fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8][blk][k]                                                               = bmv[k];
+                mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][blk][k] = bmv[k];
+                fmecost[blk32x32][blk16x16][blk8x8][blk] = min_cost;
+				int x = (blk32x32 % 2) * 8 + (blk16x16 % 2) * 4 + (blk8x8 % 2) * 2 + 1;
+				int y = (blk32x32 / 2) * 8 + (blk16x16 / 2) * 4 + (blk8x8 / 2) * 2 + 1;
+				// As you should know, mv_cache is base on 4x4 block.
+				mv_cache[y + blk][x][k] = bmv[k];
+				mv_cache[y + blk][x + 1][k] = bmv[k];
             }
         }
         break;
     case SIZE_Nx2N:
         cu_skip[21 + blk32x32 * 16 + blk16x16 * 4 + blk8x8] = 0;
+		uint32_t cost4x8;
+
         for (int blk = 0; blk < 2; blk++) {
-            mv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][0] & 0xfffc;
-            mv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][1] & 0xfffc;
+			min_cost = COST_MAX;
+
+            imv[0]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][0];
+            imv[1]      = fme_input.mv_8x8[blk32x32][blk16x16][blk8x8][blk][1];
+
+			mvp_compute4x8(blk32x32, blk16x16, blk8x8, blk);
+
             cur_pos[0] = 4 * blk + 8 * (blk8x8 % 2) + 16 * (blk16x16 % 2) + 32 * (blk32x32 % 2);
             cur_pos[1] = 8 * (blk8x8 / 2) + 16 * (blk16x16 / 2) + 32 * (blk32x32 / 2);
-            ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
-            ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
-            // half me
-            interpolate_h(ref_pos[0], ref_pos[1], 4, 8);
-            subpel_me(cur_pos[0], cur_pos[1], 4, 8, mv, dmv, 1);
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // quart me
-            interpolate_q(ref_pos[0], ref_pos[1], 4, 8, dmv);
-            uint32_t cost4x8 = subpel_me(cur_pos[0], cur_pos[1], 4, 8, mv, dmv, 0);
-            cost8x8 += cost4x8;
-            mv[0] += dmv[0];
-            mv[1] += dmv[1];
-            // copy min cost pixel to reconstruct pu
-            min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
-            pixel_copy_WxH(8, 4, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+
+			mvc[0][0] = imv[0]; mvc[0][1] = imv[1];
+			mvc[1][0] = (mvp_a_8x8[blk32x32][blk16x16][blk8x8][0] >> 2) << 2; mvc[1][1] = (mvp_a_8x8[blk32x32][blk16x16][blk8x8][1] >> 2) << 2;
+			mvc[2][0] = (mvp_b_8x8[blk32x32][blk16x16][blk8x8][0] >> 2) << 2; mvc[2][1] = (mvp_b_8x8[blk32x32][blk16x16][blk8x8][1] >> 2) << 2;
+
+			for (int i = 0; i < 3; i++) {  //search ime, mvp_a, mvp_b
+				mv[0] = mvc[i][0];
+				mv[1] = mvc[i][1];
+
+				ref_pos[0] = cur_pos[0] + (mv[0] >> 2) + param.sr / 2; // position pointed to sw
+				ref_pos[1] = cur_pos[1] + (mv[1] >> 2) + param.sr / 2;
+				// half me
+				interpolate_h(ref_pos[0], ref_pos[1], 4, 8);
+				subpel_me(cur_pos[0], cur_pos[1], 4, 8, mv, dmv, 1);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				// quart me
+				interpolate_q(ref_pos[0], ref_pos[1], 4, 8, dmv);
+				cost4x8 = subpel_me(cur_pos[0], cur_pos[1], 4, 8, mv, dmv, 0);
+				mv[0] += dmv[0];
+				mv[1] += dmv[1];
+				if (cost4x8 < min_cost) {
+					// copy min cost pixel to reconstruct pu
+					min_index = (dmv[1] + 1) * 3 + dmv[0] + 1;
+					pixel_copy_WxH(8, 4, &min_mb[cur_pos[1]][cur_pos[0]], f_LCU_SIZE, &ref_mb[min_index][0][0], f_LCU_SIZE);
+					min_cost = cost4x8;
+					bmv[0] = mv[0];
+					bmv[1] = mv[1];
+				}
+			}
+
+			bcost8x8 += min_cost;
+
             // update fmv
             for (int k = 0; k < 2; k++) {
-                fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 * 2][blk][k]                                                           = mv[k];
-                mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][blk][k] = mv[k];
-                fmecost[blk32x32][blk16x16][blk8x8][blk]                                                                             = cost4x8;
+                fme_output.fmv_8x8[blk32x32][blk16x16][blk8x8 * 2][blk][k]                                                           = bmv[k];
+                mv_store[blk32x32 / 2 * 4 + blk16x16 / 2 * 2 + blk8x8 / 2][blk32x32 % 2 * 4 + blk16x16 % 2 * 2 + blk8x8 % 2][blk][k] = bmv[k];
+                fmecost[blk32x32][blk16x16][blk8x8][blk] = min_cost;
+				int x = (blk32x32 % 2) * 8 + (blk16x16 % 2) * 4 + (blk8x8 % 2) * 2 + 1;
+				int y = (blk32x32 / 2) * 8 + (blk16x16 / 2) * 4 + (blk8x8 / 2) * 2 + 1;
+				// As you should know, mv_cache is base on 4x4 block.
+				mv_cache[y][x + blk][k] = bmv[k];
+				mv_cache[y + 1][x + blk][k] = bmv[k];
             }
         }
         break;
@@ -1512,7 +2039,7 @@ int32_t FME::fme8x8(int blk32x32, int blk16x16, int blk8x8)
         cout << "error:PU size cannot be NxN when CU=8x8" << endl;
         break;
     }
-    return cost8x8;
+    return bcost8x8;
 }
 
 void FME::interpolate_h(int pos_x, int pos_y, int len_x, int len_y)
@@ -1529,25 +2056,25 @@ void FME::interpolate_h(int pos_x, int pos_y, int len_x, int len_y)
     for (int row = 0; row < (len_y + 8); row++) {
         for (int col = 0; col < (len_x + 1); col++) {
             H_8TAPFIR<int16_t, PIXEL>(&h_buf[row][col],
-                                      sw_cache[pos_y - 4 + row][pos_x - 4 + col],
-                                      sw_cache[pos_y - 4 + row][pos_x - 3 + col],
-                                      sw_cache[pos_y - 4 + row][pos_x - 2 + col],
-                                      sw_cache[pos_y - 4 + row][pos_x - 1 + col],
-                                      sw_cache[pos_y - 4 + row][pos_x + col],
-                                      sw_cache[pos_y - 4 + row][pos_x + 1 + col],
-                                      sw_cache[pos_y - 4 + row][pos_x + 2 + col],
-                                      sw_cache[pos_y - 4 + row][pos_x + 3 + col],
-                                      true, //isFirst
-                                      false //isLast
+                                    sw_cache[pos_y - 4 + row][pos_x - 4 + col],
+                                    sw_cache[pos_y - 4 + row][pos_x - 3 + col],
+                                    sw_cache[pos_y - 4 + row][pos_x - 2 + col],
+                                    sw_cache[pos_y - 4 + row][pos_x - 1 + col],
+                                    sw_cache[pos_y - 4 + row][pos_x + col],
+                                    sw_cache[pos_y - 4 + row][pos_x + 1 + col],
+                                    sw_cache[pos_y - 4 + row][pos_x + 2 + col],
+                                    sw_cache[pos_y - 4 + row][pos_x + 3 + col],
+                                    true,  //isFirst
+                                    false  //isLast
             );
         }
     }
     // horizontal interpolation (used for ME)
     for (int row = 0; row < len_y; row++) {
         for (int col = 0; col < (len_x + 1); col++) {
-            int   a              = (IF_INTERNAL_OFFS + (1 << (max(2, (IF_INTERNAL_PREC - BIT_DEPTH)) - 1)));
-            int   temp_temp      = (h_buf[row + 4][col] + a) >> IF_FILTER_PREC;
-            PIXEL temp           = Cliply(temp_temp);
+            int a                = (IF_INTERNAL_OFFS + (1<< (max(2, (IF_INTERNAL_PREC - BIT_DEPTH))-1)) );
+            int temp_temp        = (h_buf[row + 4][col] + a) >> IF_FILTER_PREC;
+            PIXEL temp             = Cliply(temp_temp);
             h_half_pel[row][col] = temp;
         }
     }
@@ -1564,8 +2091,8 @@ void FME::interpolate_h(int pos_x, int pos_y, int len_x, int len_y)
                                     int_tmp[5 + row][col],
                                     int_tmp[6 + row][col],
                                     int_tmp[7 + row][col],
-                                    true, //isFirst
-                                    true  //isLast
+                                    true,  //isFirst
+                                    true   //isLast
             );
         }
     }
@@ -1580,16 +2107,16 @@ void FME::interpolate_h(int pos_x, int pos_y, int len_x, int len_y)
     for (int row = 0; row < (len_y + 1); row++) {
         for (int col = 0; col < (len_x + 1); col++) {
             H_8TAPFIR<PIXEL, int16_t>(&d_half_pel[row][col],
-                                      h_buf[row][col],
-                                      h_buf[row + 1][col],
-                                      h_buf[row + 2][col],
-                                      h_buf[row + 3][col],
-                                      h_buf[row + 4][col],
-                                      h_buf[row + 5][col],
-                                      h_buf[row + 6][col],
-                                      h_buf[row + 7][col],
-                                      false, //isFirst
-                                      true   //isLast
+                                    h_buf[row][col],
+                                    h_buf[row + 1][col],
+                                    h_buf[row + 2][col],
+                                    h_buf[row + 3][col],
+                                    h_buf[row + 4][col],
+                                    h_buf[row + 5][col],
+                                    h_buf[row + 6][col],
+                                    h_buf[row + 7][col],
+                                    false,  //isFirst
+                                    true    //isLast
             );
         }
     }
@@ -1633,15 +2160,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
     for (int row = 0; row < extheight; row++) {
         for (int col = 0; col < len_x; col++) {
             Q_8TAPFIR_1<int16_t, PIXEL>(&q1_buf[row][col],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 4 + col + offset_x],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 3 + col + offset_x],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 2 + col + offset_x],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 1 + col + offset_x],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + col + offset_x],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + 1 + col + offset_x],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + 2 + col + offset_x],
-                                        true, //isFirst
-                                        false //isLast
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 4 + col + offset_x],
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 3 + col + offset_x],
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 2 + col + offset_x],
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 1 + col + offset_x],
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + col + offset_x],
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + 1 + col + offset_x],
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + 2 + col + offset_x],
+                                      true, //isFirst
+                                      false //isLast
             );
         }
     }
@@ -1657,15 +2184,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
     for (int row = 0; row < extheight; row++) {
         for (int col = 0; col < len_x; col++) {
             Q_8TAPFIR_3<int16_t, PIXEL>(&q3_buf[row][col],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 3 + col + offset_x],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 2 + col + offset_x],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x - 1 + col + offset_x],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + col + offset_x],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + 1 + col + offset_x],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + 2 + col + offset_x],
-                                        sw_cache[pos_y - 4 + row + offset_y][pos_x + 3 + col + offset_x],
-                                        true, //isFirst
-                                        false //isLast
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 3 + col + offset_x],
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 2 + col + offset_x],
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x - 1 + col + offset_x],
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + col + offset_x],
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + 1 + col + offset_x],
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + 2 + col + offset_x],
+                                      sw_cache[pos_y - 4 + row + offset_y][pos_x + 3 + col + offset_x],
+                                      true, //isFirst
+                                      false //isLast
             );
         }
     }
@@ -1687,15 +2214,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 Q_8TAPFIR_1<PIXEL, int16_t>(&qbuf[1][1][row][col],
-                                            q1_buf[row + offset_y][col],
-                                            q1_buf[row + offset_y + 1][col],
-                                            q1_buf[row + offset_y + 2][col],
-                                            q1_buf[row + offset_y + 3][col],
-                                            q1_buf[row + offset_y + 4][col],
-                                            q1_buf[row + offset_y + 5][col],
-                                            q1_buf[row + offset_y + 6][col],
-                                            false, //isFirst
-                                            true   //isLast
+                                          q1_buf[row + offset_y][col],
+                                          q1_buf[row + offset_y + 1][col],
+                                          q1_buf[row + offset_y + 2][col],
+                                          q1_buf[row + offset_y + 3][col],
+                                          q1_buf[row + offset_y + 4][col],
+                                          q1_buf[row + offset_y + 5][col],
+                                          q1_buf[row + offset_y + 6][col],
+                                          false, //isFirst
+                                          true  //isLast
                 );
             }
         }
@@ -1704,27 +2231,6 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 Q_8TAPFIR_3<PIXEL, int16_t>(&qbuf[3][1][row][col],
-                                            q1_buf[row + 1][col],
-                                            q1_buf[row + 2][col],
-                                            q1_buf[row + 3][col],
-                                            q1_buf[row + 4][col],
-                                            q1_buf[row + 5][col],
-                                            q1_buf[row + 6][col],
-                                            q1_buf[row + 7][col],
-                                            false, //isFirst
-                                            true   //isLast
-                );
-            }
-        }
-    }
-
-    //step 2:  interpolate 3/4 pixels vertically
-    if (dmv[1] != 0) {
-        //@2,1
-        for (int row = 0; row < len_y; row++) {
-            for (int col = 0; col < len_x; col++) {
-                H_8TAPFIR<PIXEL, int16_t>(&qbuf[2][1][row][col],
-                                          q1_buf[row][col],
                                           q1_buf[row + 1][col],
                                           q1_buf[row + 2][col],
                                           q1_buf[row + 3][col],
@@ -1737,21 +2243,42 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
                 );
             }
         }
+    }
+
+    //step 2:  interpolate 3/4 pixels vertically
+    if (dmv[1] != 0) {
+        //@2,1
+        for (int row = 0; row < len_y; row++) {
+            for (int col = 0; col < len_x; col++) {
+                H_8TAPFIR<PIXEL, int16_t>(&qbuf[2][1][row][col],
+                                        q1_buf[row][col],
+                                        q1_buf[row + 1][col],
+                                        q1_buf[row + 2][col],
+                                        q1_buf[row + 3][col],
+                                        q1_buf[row + 4][col],
+                                        q1_buf[row + 5][col],
+                                        q1_buf[row + 6][col],
+                                        q1_buf[row + 7][col],
+                                        false, //isFirst
+                                        true   //isLast
+                );
+            }
+        }
 
         //@2,3
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 H_8TAPFIR<PIXEL, int16_t>(&qbuf[2][3][row][col],
-                                          q3_buf[row][col],
-                                          q3_buf[row + 1][col],
-                                          q3_buf[row + 2][col],
-                                          q3_buf[row + 3][col],
-                                          q3_buf[row + 4][col],
-                                          q3_buf[row + 5][col],
-                                          q3_buf[row + 6][col],
-                                          q3_buf[row + 7][col],
-                                          false, //isFirst
-                                          true   //isLast
+                                        q3_buf[row][col],
+                                        q3_buf[row + 1][col],
+                                        q3_buf[row + 2][col],
+                                        q3_buf[row + 3][col],
+                                        q3_buf[row + 4][col],
+                                        q3_buf[row + 5][col],
+                                        q3_buf[row + 6][col],
+                                        q3_buf[row + 7][col],
+                                        false, //isFirst
+                                        true   //isLast
                 );
             }
         }
@@ -1759,7 +2286,7 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         //@0,1
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
-                int a                = (IF_INTERNAL_OFFS + (1 << (max(2, (IF_INTERNAL_PREC - BIT_DEPTH)) - 1)));
+                int a                = (IF_INTERNAL_OFFS + (1<< (max(2, (IF_INTERNAL_PREC - BIT_DEPTH))-1)) );
                 int temp_temp        = (q1_buf[row + 4][col] + a) >> IF_FILTER_PREC;
                 qbuf[0][1][row][col] = Cliply(temp_temp);
             }
@@ -1767,7 +2294,7 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         //@0,3
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
-                int a                = (IF_INTERNAL_OFFS + (1 << (max(2, (IF_INTERNAL_PREC - BIT_DEPTH)) - 1)));
+                int a                = (IF_INTERNAL_OFFS + (1<< (max(2, (IF_INTERNAL_PREC - BIT_DEPTH))-1)) );
                 int temp             = (q3_buf[row + 4][col] + a) >> IF_FILTER_PREC;
                 qbuf[0][3][row][col] = Cliply(temp);
             }
@@ -1798,15 +2325,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 Q_8TAPFIR_1<PIXEL, int16_t>(&qbuf[1][2][row][col],
-                                            h_buf[row + offset_y][col + offset_x],
-                                            h_buf[row + offset_y + 1][col + offset_x],
-                                            h_buf[row + offset_y + 2][col + offset_x],
-                                            h_buf[row + offset_y + 3][col + offset_x],
-                                            h_buf[row + offset_y + 4][col + offset_x],
-                                            h_buf[row + offset_y + 5][col + offset_x],
-                                            h_buf[row + offset_y + 6][col + offset_x],
-                                            false, //isFirst
-                                            true   //isLast
+                                          h_buf[row + offset_y][col + offset_x],
+                                          h_buf[row + offset_y + 1][col + offset_x],
+                                          h_buf[row + offset_y + 2][col + offset_x],
+                                          h_buf[row + offset_y + 3][col + offset_x],
+                                          h_buf[row + offset_y + 4][col + offset_x],
+                                          h_buf[row + offset_y + 5][col + offset_x],
+                                          h_buf[row + offset_y + 6][col + offset_x],
+                                          false, //isFirst
+                                          true   //isLast
                 );
             }
         }
@@ -1822,15 +2349,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 Q_8TAPFIR_3<PIXEL, int16_t>(&qbuf[3][2][row][col],
-                                            h_buf[row + offset_y + 1][col + offset_x],
-                                            h_buf[row + offset_y + 2][col + offset_x],
-                                            h_buf[row + offset_y + 3][col + offset_x],
-                                            h_buf[row + offset_y + 4][col + offset_x],
-                                            h_buf[row + offset_y + 5][col + offset_x],
-                                            h_buf[row + offset_y + 6][col + offset_x],
-                                            h_buf[row + offset_y + 7][col + offset_x],
-                                            false, //isFirst
-                                            true   //isLast
+                                          h_buf[row + offset_y + 1][col + offset_x],
+                                          h_buf[row + offset_y + 2][col + offset_x],
+                                          h_buf[row + offset_y + 3][col + offset_x],
+                                          h_buf[row + offset_y + 4][col + offset_x],
+                                          h_buf[row + offset_y + 5][col + offset_x],
+                                          h_buf[row + offset_y + 6][col + offset_x],
+                                          h_buf[row + offset_y + 7][col + offset_x],
+                                          false, //isFirst
+                                          true   //isLast
                 );
             }
         }
@@ -1897,15 +2424,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 Q_8TAPFIR_1<PIXEL, int16_t>(&qbuf[1][3][row][col],
-                                            q3_buf[row + offset_y][col],
-                                            q3_buf[row + offset_y + 1][col],
-                                            q3_buf[row + offset_y + 2][col],
-                                            q3_buf[row + offset_y + 3][col],
-                                            q3_buf[row + offset_y + 4][col],
-                                            q3_buf[row + offset_y + 5][col],
-                                            q3_buf[row + offset_y + 6][col],
-                                            false, //isFirst
-                                            true   //isLast
+                                          q3_buf[row + offset_y][col],
+                                          q3_buf[row + offset_y + 1][col],
+                                          q3_buf[row + offset_y + 2][col],
+                                          q3_buf[row + offset_y + 3][col],
+                                          q3_buf[row + offset_y + 4][col],
+                                          q3_buf[row + offset_y + 5][col],
+                                          q3_buf[row + offset_y + 6][col],
+                                          false, //isFirst
+                                          true   //isLast
                 );
             }
         }
@@ -1914,15 +2441,15 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
         for (int row = 0; row < len_y; row++) {
             for (int col = 0; col < len_x; col++) {
                 Q_8TAPFIR_3<PIXEL, int16_t>(&qbuf[3][3][row][col],
-                                            q3_buf[row + 1][col],
-                                            q3_buf[row + 2][col],
-                                            q3_buf[row + 3][col],
-                                            q3_buf[row + 4][col],
-                                            q3_buf[row + 5][col],
-                                            q3_buf[row + 6][col],
-                                            q3_buf[row + 7][col],
-                                            false, //isFirst
-                                            true   //isLast
+                                          q3_buf[row + 1][col],
+                                          q3_buf[row + 2][col],
+                                          q3_buf[row + 3][col],
+                                          q3_buf[row + 4][col],
+                                          q3_buf[row + 5][col],
+                                          q3_buf[row + 6][col],
+                                          q3_buf[row + 7][col],
+                                          false, //isFirst
+                                          true   //isLast
                 );
             }
         }
@@ -1957,6 +2484,8 @@ void FME::interpolate_q(int pos_x, int pos_y, int len_x, int len_y, int16_t dmv[
     }
 }
 
+
+
 uint32_t FME::sub_hadmard_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk)
 {
     int      k, i, j, jj;
@@ -1979,11 +2508,11 @@ uint32_t FME::sub_hadmard_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk)
     //horizontal
     for (j = 0; j < 8; j++) {
         jj       = j << 3;
-        m2[j][0] = diff[jj] + diff[jj + 4];
+        m2[j][0] = diff[jj    ] + diff[jj + 4];
         m2[j][1] = diff[jj + 1] + diff[jj + 5];
         m2[j][2] = diff[jj + 2] + diff[jj + 6];
         m2[j][3] = diff[jj + 3] + diff[jj + 7];
-        m2[j][4] = diff[jj] - diff[jj + 4];
+        m2[j][4] = diff[jj    ] - diff[jj + 4];
         m2[j][5] = diff[jj + 1] - diff[jj + 5];
         m2[j][6] = diff[jj + 2] - diff[jj + 6];
         m2[j][7] = diff[jj + 3] - diff[jj + 7];
@@ -2048,55 +2577,6 @@ uint32_t FME::sub_hadmard_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk)
     return sad;
 }
 
-int FME::x265_satd_8x8(PIXEL *cur_8x8blk, PIXEL *ref_8x8blk) {
-    uint32_t tmp[8][4];
-    uint32_t a0, a1, a2, a3, a4, a5, a6, a7, b0, b1, b2, b3;
-    uint32_t sum = 0;
-
-    for (int i = 0; i < 8; i++, cur_8x8blk += 8, ref_8x8blk += 8) {
-        a0 = cur_8x8blk[0] - ref_8x8blk[0];
-        a1 = cur_8x8blk[1] - ref_8x8blk[1];
-        b0 = (a0 + a1) + ((a0 - a1) << BITS_PER_SUM);
-        a2 = cur_8x8blk[2] - ref_8x8blk[2];
-        a3 = cur_8x8blk[3] - ref_8x8blk[3];
-        b1 = (a2 + a3) + ((a2 - a3) << BITS_PER_SUM);
-        a4 = cur_8x8blk[4] - ref_8x8blk[4];
-        a5 = cur_8x8blk[5] - ref_8x8blk[5];
-        b2 = (a4 + a5) + ((a4 - a5) << BITS_PER_SUM);
-        a6 = cur_8x8blk[6] - ref_8x8blk[6];
-        a7 = cur_8x8blk[7] - ref_8x8blk[7];
-        b3 = (a6 + a7) + ((a6 - a7) << BITS_PER_SUM);
-        HADAMARD4(tmp[i][0], tmp[i][1], tmp[i][2], tmp[i][3], b0, b1, b2, b3);
-    }
-
-    for (int i = 0; i < 4; i++) {
-        HADAMARD4(a0, a1, a2, a3, tmp[0][i], tmp[1][i], tmp[2][i], tmp[3][i]);
-        HADAMARD4(a4, a5, a6, a7, tmp[4][i], tmp[5][i], tmp[6][i], tmp[7][i]);
-        b0 = abs2(a0 + a4) + abs2(a0 - a4);
-        b0 += abs2(a1 + a5) + abs2(a1 - a5);
-        b0 += abs2(a2 + a6) + abs2(a2 - a6);
-        b0 += abs2(a3 + a7) + abs2(a3 - a7);
-        sum += (uint16_t)b0 + (b0 >> BITS_PER_SUM);
-    }
-    sum = (((int)sum + 2) >> 2);
-
-    return (int)sum;
-}
-
-uint32_t FME::pixel_subsad_WxH(PIXEL *pix1, int i_stride_pix1,
-	PIXEL *pix2, int i_stride_pix2,
-	int w, int h)
-{
-	int i_sum = 0;
-	int x, y;
-	for (y = 0; y < h; y += 2) {
-		for (x = 0; x < w; x += 2) {
-			i_sum += abs(*(pix1 + y * i_stride_pix1 + x) - *(pix2 + y * i_stride_pix2 + x));
-		}
-	}
-	return i_sum;
-}
-
 uint32_t FME::sub_hadmard_satd(PIXEL *cur_4x4blk, PIXEL *ref_4x4blk)
 {
     int      i;
@@ -2130,7 +2610,7 @@ uint32_t FME::sub_hadmard_satd(PIXEL *cur_4x4blk, PIXEL *ref_4x4blk)
 }
 
 void FME::hadamard_1d(int16_t &o_data0, int16_t &o_data1, int16_t &o_data2, int16_t &o_data3,
-                      int16_t i_data0, int16_t i_data1, int16_t i_data2, int16_t i_data3)
+                 int16_t i_data0, int16_t i_data1, int16_t i_data2, int16_t i_data3)
 {
     int16_t wire0 = i_data0 + i_data1;
     int16_t wire1 = i_data0 - i_data1;
@@ -2142,3 +2622,50 @@ void FME::hadamard_1d(int16_t &o_data0, int16_t &o_data1, int16_t &o_data2, int1
     o_data2 = wire0 - wire2;
     o_data3 = wire1 - wire3;
 }
+
+
+#define BITS_PER_SUM (8 * sizeof(uint16_t))
+
+#define HADAMARD4(d0, d1, d2, d3, s0, s1, s2, s3) { \
+        uint32_t t0 = s0 + s1; \
+        uint32_t t1 = s0 - s1; \
+        uint32_t t2 = s2 + s3; \
+        uint32_t t3 = s2 - s3; \
+        d0 = t0 + t2; \
+        d2 = t0 - t2; \
+        d1 = t1 + t3; \
+        d3 = t1 - t3; \
+}
+
+inline uint32_t abs2(uint32_t a)
+{
+	uint32_t s = ((a >> (BITS_PER_SUM - 1)) & (((uint32_t)1 << BITS_PER_SUM) + 1)) * ((uint16_t)-1);
+
+	return (a + s) ^ s;
+}
+
+uint16_t FME::sub_hadmard_satd_8x4(PIXEL* pix1, PIXEL* pix2)
+{
+	uint32_t tmp[4][4];
+	uint32_t a0, a1, a2, a3;
+	uint32_t sum = 0;
+
+	for (int i = 0; i < 4; i++, pix1 += 64, pix2 += 64)
+	{
+		a0 = (pix1[0] - pix2[0]) + ((uint32_t)(pix1[4] - pix2[4]) << BITS_PER_SUM);
+		a1 = (pix1[1] - pix2[1]) + ((uint32_t)(pix1[5] - pix2[5]) << BITS_PER_SUM);
+		a2 = (pix1[2] - pix2[2]) + ((uint32_t)(pix1[6] - pix2[6]) << BITS_PER_SUM);
+		a3 = (pix1[3] - pix2[3]) + ((uint32_t)(pix1[7] - pix2[7]) << BITS_PER_SUM);
+		HADAMARD4(tmp[i][0], tmp[i][1], tmp[i][2], tmp[i][3], a0, a1, a2, a3);
+	}
+
+	for (int i = 0; i < 4; i++)
+	{
+		HADAMARD4(a0, a1, a2, a3, tmp[0][i], tmp[1][i], tmp[2][i], tmp[3][i]);
+		sum += abs2(a0) + abs2(a1) + abs2(a2) + abs2(a3);
+	}
+
+	return (((uint16_t)sum) + (sum >> BITS_PER_SUM)) >> 1;
+}
+
+
