@@ -214,21 +214,8 @@ private:
 	void fme16x16cost(int blk32x32, int blk16x16, int splitmode);
 	void fme8x8cost(int blk32x32, int blk16x16, int blk8x8, int splitmode);
 
-	// load from x265
-	void fmeloadx265();
-
-	//distortion calculation func and dump
-	uint32_t calcRDSADCost(int pos_x, int pos_y, int len_x, int len_y, int16_t mv[2], int min_index);
-	void dumpcost();
-
 	// sub-fme partition func
 	void fmepartition();
-
-	// update fmv
-	void fmeupdate();
-	void fme32x32update(int blk32x32);
-	void fme16x16update(int blk32x32, int blk16x16);
-	void fme8x8update(int blk32x32, int blk16x16, int blk8x8);
 
     // SATD calculation
     void hadamard_1d(int16_t &o_data0, int16_t &o_data1, int16_t &o_data2, int16_t &o_data3,
