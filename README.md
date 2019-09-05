@@ -1,6 +1,6 @@
 # cproject: some c++ code and project
 
-## basic
+## algorithm
 The test code of [algorithm I~IV](https://book.douban.com/subject/1143801/)
 
 ## basic
